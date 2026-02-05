@@ -445,7 +445,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
         {/* VAULT Section */}
         <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-4"
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-5"
           onClick={() => toggleSection("vault")}
         >
           <svg
@@ -476,7 +476,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
         {/* MEMORIES Section */}
         <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-4"
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-5"
           onClick={() => toggleSection("memories")}
         >
           <svg
@@ -507,7 +507,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
         {/* DREAM JOURNAL Section */}
         <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-4"
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-5"
           onClick={() => toggleSection("dreamJournal")}
         >
           <svg
@@ -529,7 +529,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
         {/* VOICE LOG Section */}
         <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-4"
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-5"
           onClick={() => toggleSection("voiceLog")}
         >
           <svg
@@ -631,6 +631,18 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             }}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            Memory
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
+            onClick={() => {
+              setCreateMenu(null);
+            }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             </svg>
             Dream Journal
@@ -648,18 +660,6 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
               <line x1="8" y1="23" x2="16" y2="23"/>
             </svg>
             Voice Log
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
-            onClick={() => {
-              setCreateMenu(null);
-            }}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-            Memory
           </button>
         </div>
       )}
