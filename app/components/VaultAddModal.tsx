@@ -1,0 +1,133 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+
+interface VaultAddModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (key: string, value: string, tags?: string) => Promise<void>;
+}
+
+export function VaultAddModal({ isOpen, onClose, onAdd }: VaultAddModalProps) {
+  const [key, setKey] = useState("");
+  const [value, setValue] = useState("");
+  const [tags, setTags] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const keyInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && keyInputRef.current) {
+      keyInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async () => {
+    if (!key.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      await onAdd(key.trim(), value.trim(), tags.trim());
+      setKey("");
+      setValue("");
+      setTags("");
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === "Escape") {
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" />
+      
+      {/* Modal */}
+      <div 
+        className="relative bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-2xl w-full max-w-md mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#3f3f3f]">
+          <h2 className="text-sm font-medium text-[#ebebeb]">Add to Vault</h2>
+          <button
+            onClick={onClose}
+            className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="block text-xs text-[#9b9b9b] mb-1.5">Key</label>
+            <input
+              ref={keyInputRef}
+              type="text"
+              placeholder="e.g. GitHub Personal Access Token"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[#9b9b9b] mb-1.5">Value</label>
+            <input
+              type="text"
+              placeholder="The actual secret or value"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b] font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[#9b9b9b] mb-1.5">Tags <span className="text-[#6b6b6b]">(comma-separated, optional)</span></label>
+            <input
+              type="text"
+              placeholder="e.g. api, github, work"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#3f3f3f]">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm text-[#9b9b9b] hover:text-[#ebebeb] rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!key.trim() || isSubmitting}
+            className="px-3 py-1.5 text-sm bg-[#4f4f4f] hover:bg-[#5f5f5f] disabled:bg-[#3f3f3f] disabled:text-[#6b6b6b] text-[#ebebeb] rounded-md transition-colors"
+          >
+            {isSubmitting ? "Adding..." : "Add"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

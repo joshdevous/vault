@@ -22,7 +22,8 @@ interface SidebarProps {
   onArchiveNote: (id: string) => void;
   onRenameNote: (id: string, newTitle: string) => void;
   onGoHome: () => void;
-  onOpenVault: (startAdding?: boolean) => void;
+  onOpenVault: () => void;
+  onOpenVaultAddModal: () => void;
   notes: Note[];
 }
 
@@ -250,7 +251,7 @@ interface CreateMenuState {
   y: number;
 }
 
-export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onGoHome, onOpenVault, notes }: SidebarProps) {
+export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onGoHome, onOpenVault, onOpenVaultAddModal, notes }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
     vault: true,
@@ -455,7 +456,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onOpenVault(true);
+              onOpenVaultAddModal();
             }}
             className="p-1 text-[#6b6b6b] hover:text-[#aeaeae] hover:bg-[rgba(255,255,255,0.055)] rounded transition-all"
             title="Add to vault"

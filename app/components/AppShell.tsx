@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "./Sidebar";
 import { NoteEditor } from "./NoteEditor";
 import { VaultView } from "./VaultView";
+import { VaultAddModal } from "./VaultAddModal";
 import { Note, VaultItem } from "@/types/models";
 
 type ViewType = "home" | "note" | "vault";
@@ -13,7 +14,7 @@ export function AppShell() {
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>("home");
-  const [vaultStartAdding, setVaultStartAdding] = useState(false);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
@@ -97,10 +98,14 @@ export function AppShell() {
   };
 
   // Open vault view
-  const handleOpenVault = (startAdding?: boolean) => {
+  const handleOpenVault = () => {
     setSelectedNoteId(null);
     setCurrentView("vault");
-    setVaultStartAdding(startAdding || false);
+  };
+
+  // Open vault add modal
+  const handleOpenVaultAddModal = () => {
+    setIsVaultModalOpen(true);
   };
 
   // Update note in list
@@ -190,26 +195,6 @@ export function AppShell() {
     }
   };
 
-  // Update vault item
-  const handleUpdateVaultItem = async (id: string, data: Partial<VaultItem>) => {
-    try {
-      const res = await fetch(`/api/vault/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        setVaultItems((prev) =>
-          prev.map((item) => (item.id === id ? updated : item))
-        );
-      }
-    } catch (error) {
-      console.error("Failed to update vault item:", error);
-    }
-  };
-
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
@@ -220,6 +205,7 @@ export function AppShell() {
         onArchiveNote={handleArchiveNote}
         onRenameNote={handleRenameNote}
         onOpenVault={handleOpenVault}
+        onOpenVaultAddModal={handleOpenVaultAddModal}
         onGoHome={() => { setSelectedNoteId(null); setCurrentView("home"); }}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">
@@ -235,11 +221,8 @@ export function AppShell() {
         ) : currentView === "vault" ? (
           <VaultView
             vaultItems={vaultItems}
-            onCreateVaultItem={handleCreateVaultItem}
             onDeleteVaultItem={handleDeleteVaultItem}
-            onUpdateVaultItem={handleUpdateVaultItem}
-            startAdding={vaultStartAdding}
-            onStartAddingConsumed={() => setVaultStartAdding(false)}
+            onOpenAddModal={handleOpenVaultAddModal}
           />
         ) : (
           <div className="flex flex-col h-full">
@@ -265,6 +248,15 @@ export function AppShell() {
           </div>
         )}
       </main>
+      
+      {/* Vault Add Modal */}
+      <VaultAddModal
+        isOpen={isVaultModalOpen}
+        onClose={() => setIsVaultModalOpen(false)}
+        onAdd={async (key, value, tags) => {
+          await handleCreateVaultItem(key, value, tags);
+        }}
+      />
     </div>
   );
 }

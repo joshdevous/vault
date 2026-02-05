@@ -1,39 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { VaultItem } from "@/types/models";
 
 interface VaultViewProps {
   vaultItems: VaultItem[];
-  onCreateVaultItem: (key: string, value: string, tags?: string) => Promise<VaultItem | undefined>;
   onDeleteVaultItem: (id: string) => void;
-  onUpdateVaultItem: (id: string, data: Partial<VaultItem>) => void;
-  startAdding?: boolean;
-  onStartAddingConsumed?: () => void;
+  onOpenAddModal: () => void;
 }
 
-export function VaultView({ vaultItems, onCreateVaultItem, onDeleteVaultItem, onUpdateVaultItem, startAdding, onStartAddingConsumed }: VaultViewProps) {
+export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: VaultViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
-  const [newKey, setNewKey] = useState("");
-  const [newValue, setNewValue] = useState("");
-  const [newTags, setNewTags] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const keyInputRef = useRef<HTMLInputElement>(null);
-
-  // Handle startAdding prop from parent
-  useEffect(() => {
-    if (startAdding) {
-      setIsAdding(true);
-      onStartAddingConsumed?.();
-    }
-  }, [startAdding, onStartAddingConsumed]);
-
-  useEffect(() => {
-    if (isAdding && keyInputRef.current) {
-      keyInputRef.current.focus();
-    }
-  }, [isAdding]);
 
   const filteredItems = vaultItems.filter((item) => {
     const query = searchQuery.toLowerCase();
@@ -43,27 +21,6 @@ export function VaultView({ vaultItems, onCreateVaultItem, onDeleteVaultItem, on
       item.tags.toLowerCase().includes(query)
     );
   });
-
-  const handleAdd = async () => {
-    if (newKey.trim()) {
-      await onCreateVaultItem(newKey.trim(), newValue.trim(), newTags.trim());
-      setNewKey("");
-      setNewValue("");
-      setNewTags("");
-      setIsAdding(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      handleAdd();
-    } else if (e.key === "Escape") {
-      setIsAdding(false);
-      setNewKey("");
-      setNewValue("");
-      setNewTags("");
-    }
-  };
 
   const handleCopy = (id: string, value: string) => {
     navigator.clipboard.writeText(value);
@@ -91,7 +48,7 @@ export function VaultView({ vaultItems, onCreateVaultItem, onDeleteVaultItem, on
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-[#e3e3e3]">Vault</h1>
             <button
-              onClick={() => setIsAdding(true)}
+              onClick={() => onOpenAddModal()}
               className="flex items-center gap-2 px-3 py-1.5 bg-[#2f2f2f] hover:bg-[#3f3f3f] text-[#ebebeb] text-sm rounded-md transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,67 +72,6 @@ export function VaultView({ vaultItems, onCreateVaultItem, onDeleteVaultItem, on
             />
           </div>
 
-          {/* Add new item form */}
-          {isAdding && (
-            <div className="bg-[#252525] border border-[#3f3f3f] rounded-lg p-4 mb-6">
-              <div className="grid gap-3">
-                <div>
-                  <label className="block text-xs text-[#9b9b9b] mb-1">Key</label>
-                  <input
-                    ref={keyInputRef}
-                    type="text"
-                    placeholder="e.g. GitHub Personal Access Token"
-                    value={newKey}
-                    onChange={(e) => setNewKey(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-[#2f2f2f] text-[#ebebeb] text-sm px-3 py-2 rounded outline-none border border-[#3f3f3f] focus:border-[#5f5f5f]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[#9b9b9b] mb-1">Value</label>
-                  <input
-                    type="text"
-                    placeholder="The actual secret or value"
-                    value={newValue}
-                    onChange={(e) => setNewValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-[#2f2f2f] text-[#ebebeb] text-sm px-3 py-2 rounded outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[#9b9b9b] mb-1">Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. api, github, work"
-                    value={newTags}
-                    onChange={(e) => setNewTags(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="w-full bg-[#2f2f2f] text-[#ebebeb] text-sm px-3 py-2 rounded outline-none border border-[#3f3f3f] focus:border-[#5f5f5f]"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={handleAdd}
-                  className="px-4 py-1.5 bg-[#4f4f4f] hover:bg-[#5f5f5f] text-[#ebebeb] text-sm rounded transition-colors"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAdding(false);
-                    setNewKey("");
-                    setNewValue("");
-                    setNewTags("");
-                  }}
-                  className="px-4 py-1.5 text-[#9b9b9b] hover:text-[#ebebeb] text-sm rounded transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Vault items */}
           {filteredItems.length === 0 ? (
             <div className="text-center py-12">
@@ -186,9 +82,9 @@ export function VaultView({ vaultItems, onCreateVaultItem, onDeleteVaultItem, on
               <p className="text-[#6b6b6b]">
                 {searchQuery ? "No items match your search" : "No items in the vault yet"}
               </p>
-              {!searchQuery && !isAdding && (
+              {!searchQuery && (
                 <button
-                  onClick={() => setIsAdding(true)}
+                  onClick={() => onOpenAddModal()}
                   className="mt-4 text-sm text-[#9b9b9b] hover:text-[#ebebeb] transition-colors"
                 >
                   Add your first item →
