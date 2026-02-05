@@ -117,8 +117,10 @@ export function AppShell() {
           <NoteEditor
             key={selectedNoteId}
             note={notes.find(n => n.id === selectedNoteId)!}
+            allNotes={notes}
             onUpdate={handleUpdateNote}
             onDelete={handleDeleteNote}
+            onSelectNote={handleSelectNote}
           />
         ) : (
           <div className="flex flex-col h-full">

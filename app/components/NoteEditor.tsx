@@ -1,20 +1,37 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Note } from "@/types/models";
 
 interface NoteEditorProps {
   note: Note;
+  allNotes: Note[];
   onUpdate: (note: Note) => void;
   onDelete: (id: string) => void;
+  onSelectNote: (id: string) => void;
 }
 
-export function NoteEditor({ note, onUpdate, onDelete }: NoteEditorProps) {
+export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }: NoteEditorProps) {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Build breadcrumb trail from current note to root
+  const breadcrumbs = useMemo(() => {
+    const trail: Note[] = [];
+    let current: Note | undefined = note;
+    
+    while (current) {
+      trail.unshift(current);
+      current = current.parentId 
+        ? allNotes.find(n => n.id === current!.parentId) 
+        : undefined;
+    }
+    
+    return trail;
+  }, [note, allNotes]);
 
   // Auto-save function
   const saveNote = useCallback(async (newTitle: string, newContent: string) => {
@@ -99,9 +116,30 @@ export function NoteEditor({ note, onUpdate, onDelete }: NoteEditorProps) {
     <div className="flex flex-col h-full">
       {/* Top bar */}
       <div className="flex items-center justify-between h-11 px-4 border-b border-[#2f2f2f] shrink-0">
-        <div className="flex items-center gap-2 text-sm text-[#9b9b9b]">
-          <span>{note.icon}</span>
-          <span className="truncate max-w-[200px]">{title || "Untitled"}</span>
+        <div className="flex items-center gap-1 text-sm text-[#9b9b9b] overflow-hidden">
+          {breadcrumbs.map((crumb, index) => (
+            <div key={crumb.id} className="flex items-center gap-1 min-w-0">
+              {index > 0 && (
+                <svg className="w-3 h-3 text-[#6b6b6b] shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+              {index === breadcrumbs.length - 1 ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="shrink-0">{crumb.icon}</span>
+                  <span className="truncate">{crumb.id === note.id ? (title || "Untitled") : (crumb.title || "Untitled")}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onSelectNote(crumb.id)}
+                  className="flex items-center gap-1.5 hover:text-[#e3e3e3] transition-colors min-w-0"
+                >
+                  <span className="shrink-0">{crumb.icon}</span>
+                  <span className="truncate max-w-[120px]">{crumb.title || "Untitled"}</span>
+                </button>
+              )}
+            </div>
+          ))}
         </div>
         <div className="flex items-center gap-3">
           {isSaving && (
