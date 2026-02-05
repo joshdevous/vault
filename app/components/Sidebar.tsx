@@ -504,30 +504,30 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed bg-[#252525] border border-[#3a3a3a] rounded-lg shadow-xl py-1 min-w-[160px] z-50"
+          className="fixed bg-[#252525] border border-[#2f2f2f] rounded-lg shadow-xl p-1 min-w-[160px] z-50"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-[#e3e3e3] hover:bg-[#3a3a3a] transition-colors text-left cursor-pointer"
+            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
             onClick={() => {
               setEditingNoteId(contextMenu.noteId);
               setContextMenu(null);
             }}
           >
-            <svg className="w-4 h-4 text-[#9b9b9b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             Rename
           </button>
           <button
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-[#e3e3e3] hover:bg-[#3a3a3a] transition-colors text-left cursor-pointer"
+            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
             onClick={() => {
               onArchiveNote(contextMenu.noteId);
               setContextMenu(null);
             }}
           >
-            <svg className="w-4 h-4 text-[#9b9b9b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
             Archive
