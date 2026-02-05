@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "./Sidebar";
 import { NoteEditor } from "./NoteEditor";
-import { Note } from "@/types/models";
+import { Note, VaultItem } from "@/types/models";
 
 export function AppShell() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -46,9 +47,23 @@ export function AppShell() {
     }
   }, []);
 
+  // Fetch all vault items
+  const fetchVaultItems = useCallback(async () => {
+    try {
+      const res = await fetch("/api/vault");
+      if (res.ok) {
+        const data = await res.json();
+        setVaultItems(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch vault items:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotes();
-  }, [fetchNotes]);
+    fetchVaultItems();
+  }, [fetchNotes, fetchVaultItems]);
 
   // Create new note (optionally as a child)
   const handleCreateNote = async (parentId?: string) => {
@@ -127,15 +142,52 @@ export function AppShell() {
     }
   };
 
+  // Create vault item
+  const handleCreateVaultItem = async (key: string, value: string, tags?: string) => {
+    try {
+      const res = await fetch("/api/vault", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, value, tags: tags || "" }),
+      });
+
+      if (res.ok) {
+        const newItem = await res.json();
+        setVaultItems((prev) => [newItem, ...prev]);
+        return newItem;
+      }
+    } catch (error) {
+      console.error("Failed to create vault item:", error);
+    }
+  };
+
+  // Delete vault item
+  const handleDeleteVaultItem = async (id: string) => {
+    try {
+      const res = await fetch(`/api/vault/${id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setVaultItems((prev) => prev.filter((item) => item.id !== id));
+      }
+    } catch (error) {
+      console.error("Failed to delete vault item:", error);
+    }
+  };
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
         notes={notes}
+        vaultItems={vaultItems}
         selectedNoteId={selectedNoteId}
         onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
         onArchiveNote={handleArchiveNote}
         onRenameNote={handleRenameNote}
+        onCreateVaultItem={handleCreateVaultItem}
+        onDeleteVaultItem={handleDeleteVaultItem}
         onGoHome={() => setSelectedNoteId(null)}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">

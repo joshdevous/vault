@@ -12,9 +12,9 @@ export interface Note {
 
 export interface VaultItem {
   id: string;
-  title: string;
-  content: string;
-  icon: string;
+  key: string;
+  value: string;
+  tags: string;
   createdAt: string;
   updatedAt: string;
 }

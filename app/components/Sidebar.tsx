@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Note } from "@/types/models";
+import { Note, VaultItem } from "@/types/models";
 
 type SectionKey = "notes" | "vault" | "memories" | "dreamJournal" | "voiceLog";
 
@@ -23,6 +23,9 @@ interface SidebarProps {
   onRenameNote: (id: string, newTitle: string) => void;
   onGoHome: () => void;
   notes: Note[];
+  vaultItems: VaultItem[];
+  onCreateVaultItem: (key: string, value: string, tags?: string) => Promise<VaultItem | undefined>;
+  onDeleteVaultItem: (id: string) => void;
 }
 
 // Build tree structure from flat notes array
@@ -249,7 +252,7 @@ interface CreateMenuState {
   y: number;
 }
 
-export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onGoHome, notes }: SidebarProps) {
+export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onGoHome, notes, vaultItems, onCreateVaultItem, onDeleteVaultItem }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
     vault: true,
@@ -262,6 +265,10 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [createMenu, setCreateMenu] = useState<CreateMenuState | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [addingVaultItem, setAddingVaultItem] = useState(false);
+  const [newVaultKey, setNewVaultKey] = useState("");
+  const [newVaultValue, setNewVaultValue] = useState("");
+  const vaultInputRef = useRef<HTMLInputElement>(null);
 
   // Load from localStorage after hydration
   useEffect(() => {
@@ -342,6 +349,32 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   const handleFinishRename = (id: string, newTitle: string) => {
     onRenameNote(id, newTitle);
     setEditingNoteId(null);
+  };
+
+  // Focus vault input when adding
+  useEffect(() => {
+    if (addingVaultItem && vaultInputRef.current) {
+      vaultInputRef.current.focus();
+    }
+  }, [addingVaultItem]);
+
+  const handleAddVaultItem = async () => {
+    if (newVaultKey.trim()) {
+      await onCreateVaultItem(newVaultKey.trim(), newVaultValue.trim());
+      setNewVaultKey("");
+      setNewVaultValue("");
+      setAddingVaultItem(false);
+    }
+  };
+
+  const handleVaultKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleAddVaultItem();
+    } else if (e.key === "Escape") {
+      setAddingVaultItem(false);
+      setNewVaultKey("");
+      setNewVaultValue("");
+    }
   };
 
   return (
@@ -444,33 +477,119 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         )}
 
         {/* VAULT Section */}
-        <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-5"
-          onClick={() => toggleSection("vault")}
-        >
-          <svg
-            className={`w-3 h-3 transition-transform duration-150 ${openSections.vault ? "rotate-90" : ""}`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
+        <div className="flex items-center justify-between mt-5">
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
+            onClick={() => toggleSection("vault")}
           >
-            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-          </svg>
-          <span>Vault</span>
+            <svg
+              className={`w-3 h-3 transition-transform duration-150 ${openSections.vault ? "rotate-90" : ""}`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            <span>Vault</span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setAddingVaultItem(true);
+            }}
+            className="p-1 text-[#6b6b6b] hover:text-[#aeaeae] hover:bg-[rgba(255,255,255,0.055)] rounded transition-all"
+            title="Add to vault"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </button>
         </div>
         {openSections.vault && (
           <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
-            <div className="flex items-center gap-2.5 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all">
-              <span className="text-[15px]">🔐</span>
-              <span className="truncate">Passwords</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all">
-              <span className="text-[15px]">🔑</span>
-              <span className="truncate">API Keys</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all">
-              <span className="text-[15px]">📁</span>
-              <span className="truncate">Secure Documents</span>
-            </div>
+            {/* Add new vault item form */}
+            {addingVaultItem && (
+              <div className="flex flex-col gap-1 px-2 py-2">
+                <input
+                  ref={vaultInputRef}
+                  type="text"
+                  placeholder="Key (e.g. GitHub Token)"
+                  value={newVaultKey}
+                  onChange={(e) => setNewVaultKey(e.target.value)}
+                  onKeyDown={handleVaultKeyDown}
+                  className="bg-[#2f2f2f] text-[#ebebeb] text-sm px-2 py-1 rounded outline-none border border-[#3f3f3f] focus:border-[#5f5f5f]"
+                />
+                <input
+                  type="text"
+                  placeholder="Value"
+                  value={newVaultValue}
+                  onChange={(e) => setNewVaultValue(e.target.value)}
+                  onKeyDown={handleVaultKeyDown}
+                  className="bg-[#2f2f2f] text-[#ebebeb] text-sm px-2 py-1 rounded outline-none border border-[#3f3f3f] focus:border-[#5f5f5f]"
+                />
+                <div className="flex gap-1 mt-1">
+                  <button
+                    onClick={handleAddVaultItem}
+                    className="flex-1 text-xs bg-[#3f3f3f] text-[#ebebeb] px-2 py-1 rounded hover:bg-[#4f4f4f] transition-colors"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAddingVaultItem(false);
+                      setNewVaultKey("");
+                      setNewVaultValue("");
+                    }}
+                    className="flex-1 text-xs bg-transparent text-[#9b9b9b] px-2 py-1 rounded hover:bg-[#2f2f2f] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {vaultItems.length === 0 && !addingVaultItem ? (
+              <div className="px-2 py-2 text-[#6b6b6b] text-sm italic">
+                No items yet
+              </div>
+            ) : (
+              vaultItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="group flex items-center gap-2 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all"
+                  title={`${item.key}: ${item.value}`}
+                >
+                  <svg className="w-4 h-4 shrink-0 text-[#6b6b6b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <span className="truncate flex-1">{item.key}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(item.value);
+                    }}
+                    className="p-0.5 text-[#6b6b6b] hover:text-[#aeaeae] opacity-0 group-hover:opacity-100 transition-all"
+                    title="Copy value"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteVaultItem(item.id);
+                    }}
+                    className="p-0.5 text-[#6b6b6b] hover:text-[#ff6b6b] opacity-0 group-hover:opacity-100 transition-all"
+                    title="Delete"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         )}
 
