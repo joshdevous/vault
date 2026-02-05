@@ -11,16 +11,42 @@ interface VaultViewProps {
 
 export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: VaultViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Quick filter tags
+  const quickTags = ["music", "watch", "food", "read", "youtube", "work"];
+
   const filteredItems = vaultItems.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      item.key.toLowerCase().includes(query) ||
-      item.value.toLowerCase().includes(query) ||
-      item.tags.toLowerCase().includes(query)
-    );
+    // First filter by active tag if set
+    if (activeTag) {
+      const itemTags = item.tags.toLowerCase().split(",").map(t => t.trim());
+      if (!itemTags.includes(activeTag.toLowerCase())) {
+        return false;
+      }
+    }
+    
+    // Then filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        item.key.toLowerCase().includes(query) ||
+        item.value.toLowerCase().includes(query) ||
+        item.tags.toLowerCase().includes(query)
+      );
+    }
+    
+    return true;
   });
+
+  const handleTagClick = (tag: string) => {
+    if (activeTag === tag) {
+      setActiveTag(null); // Toggle off
+    } else {
+      setActiveTag(tag);
+      setSearchQuery(""); // Clear search when selecting tag
+    }
+  };
 
   const handleCopy = (id: string, value: string) => {
     navigator.clipboard.writeText(value);
@@ -59,7 +85,7 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
           </div>
 
           {/* Search */}
-          <div className="relative mb-6">
+          <div className="relative mb-4">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -67,9 +93,34 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
               type="text"
               placeholder="Search vault..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setActiveTag(null); }}
               className="w-full bg-[#2f2f2f] text-[#ebebeb] text-sm pl-10 pr-4 py-2 rounded-md outline-none border border-transparent focus:border-[#4f4f4f] placeholder-[#6b6b6b]"
             />
+          </div>
+
+          {/* Quick filter tags */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {quickTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => handleTagClick(tag)}
+                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                  activeTag === tag
+                    ? "bg-[#4f4f4f] text-[#ebebeb]"
+                    : "bg-[#2f2f2f] text-[#9b9b9b] hover:bg-[#3f3f3f] hover:text-[#ebebeb]"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+            {activeTag && (
+              <button
+                onClick={() => setActiveTag(null)}
+                className="px-3 py-1 text-xs text-[#6b6b6b] hover:text-[#9b9b9b] transition-colors"
+              >
+                Clear
+              </button>
+            )}
           </div>
 
           {/* Vault items */}
