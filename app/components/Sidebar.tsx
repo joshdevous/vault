@@ -169,7 +169,7 @@ function NoteItem({
         </button>
 
         {/* Note content */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
           <NoteIcon hasContent={note.content.length > 0 && note.content !== "<p></p>"} />
           {isEditing ? (
             <input
@@ -179,7 +179,7 @@ function NoteItem({
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={() => onFinishRename(note.id, editValue)}
-              className="flex-1 bg-[#2a2a2a] text-[#ebebeb] text-sm px-1 py-0 border border-[#3b82f6] rounded outline-none"
+              className="bg-transparent text-[#ebebeb] text-sm outline-none border-none p-0 m-0 w-full min-w-0"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
