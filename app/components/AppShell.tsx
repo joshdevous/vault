@@ -109,6 +109,26 @@ export function AppShell() {
     }
   };
 
+  // Rename note
+  const handleRenameNote = async (id: string, newTitle: string) => {
+    try {
+      const res = await fetch(`/api/notes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle }),
+      });
+
+      if (res.ok) {
+        const updatedNote = await res.json();
+        setNotes((prev) =>
+          prev.map((n) => (n.id === updatedNote.id ? updatedNote : n))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to rename note:", error);
+    }
+  };
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
@@ -117,6 +137,7 @@ export function AppShell() {
         onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
         onArchiveNote={handleArchiveNote}
+        onRenameNote={handleRenameNote}
         onGoHome={() => setSelectedNoteId(null)}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">

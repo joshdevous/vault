@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Note } from "@/types/models";
 
 type SectionKey = "notes" | "vault" | "memories";
@@ -9,11 +9,18 @@ interface NoteWithChildren extends Note {
   children: NoteWithChildren[];
 }
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  noteId: string;
+}
+
 interface SidebarProps {
   selectedNoteId?: string | null;
   onSelectNote: (id: string) => void;
   onCreateNote: (parentId?: string) => void;
   onArchiveNote: (id: string) => void;
+  onRenameNote: (id: string, newTitle: string) => void;
   onGoHome: () => void;
   notes: Note[];
 }
@@ -53,11 +60,16 @@ interface NoteItemProps {
   depth: number;
   selectedNoteId?: string | null;
   expandedNotes: Set<string>;
+  editingNoteId: string | null;
   onToggleExpand: (id: string) => void;
   onExpandNote: (id: string) => void;
   onSelectNote: (id: string) => void;
   onCreateNote: (parentId?: string) => void;
   onArchiveNote: (id: string) => void;
+  onContextMenu: (e: React.MouseEvent, noteId: string) => void;
+  onStartRename: (id: string) => void;
+  onFinishRename: (id: string, newTitle: string) => void;
+  onCancelRename: () => void;
 }
 
 // Document icon - filled if has content, outline if empty
@@ -86,16 +98,44 @@ function NoteItem({
   note, 
   depth, 
   selectedNoteId, 
-  expandedNotes, 
+  expandedNotes,
+  editingNoteId,
   onToggleExpand,
   onExpandNote, 
   onSelectNote,
   onCreateNote,
-  onArchiveNote
+  onArchiveNote,
+  onContextMenu,
+  onStartRename,
+  onFinishRename,
+  onCancelRename
 }: NoteItemProps) {
   const hasChildren = note.children.length > 0;
   const isExpanded = expandedNotes.has(note.id);
   const isSelected = selectedNoteId === note.id;
+  const isEditing = editingNoteId === note.id;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [editValue, setEditValue] = useState(note.title);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    setEditValue(note.title);
+  }, [note.title]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      onFinishRename(note.id, editValue);
+    } else if (e.key === "Escape") {
+      setEditValue(note.title);
+      onCancelRename();
+    }
+  };
 
   return (
     <div>
@@ -106,7 +146,8 @@ function NoteItem({
             : "text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb]"
         }`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
-        onClick={() => onSelectNote(note.id)}
+        onClick={() => !isEditing && onSelectNote(note.id)}
+        onContextMenu={(e) => onContextMenu(e, note.id)}
       >
         {/* Expand/collapse toggle */}
         <button
@@ -130,7 +171,20 @@ function NoteItem({
         {/* Note content */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <NoteIcon hasContent={note.content.length > 0 && note.content !== "<p></p>"} />
-          <span className="truncate">{note.title || "Untitled"}</span>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => onFinishRename(note.id, editValue)}
+              className="flex-1 bg-[#2a2a2a] text-[#ebebeb] text-sm px-1 py-0 border border-[#3b82f6] rounded outline-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className="truncate">{note.title || "Untitled"}</span>
+          )}
         </div>
 
         {/* Action buttons */}
@@ -175,11 +229,16 @@ function NoteItem({
               depth={depth + 1}
               selectedNoteId={selectedNoteId}
               expandedNotes={expandedNotes}
+              editingNoteId={editingNoteId}
               onToggleExpand={onToggleExpand}
               onExpandNote={onExpandNote}
               onSelectNote={onSelectNote}
               onCreateNote={onCreateNote}
               onArchiveNote={onArchiveNote}
+              onContextMenu={onContextMenu}
+              onStartRename={onStartRename}
+              onFinishRename={onFinishRename}
+              onCancelRename={onCancelRename}
             />
           ))}
         </div>
@@ -188,7 +247,7 @@ function NoteItem({
   );
 }
 
-export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onGoHome, notes }: SidebarProps) {
+export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onGoHome, notes }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
     vault: true,
@@ -196,6 +255,8 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   });
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
   // Load from localStorage after hydration
   useEffect(() => {
@@ -209,6 +270,15 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
     }
     setHydrated(true);
   }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener("click", handleClick);
+      return () => document.removeEventListener("click", handleClick);
+    }
+  }, [contextMenu]);
 
   // Persist open sections to localStorage
   useEffect(() => {
@@ -248,6 +318,16 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
       next.add(id);
       return next;
     });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, noteId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, noteId });
+  };
+
+  const handleFinishRename = (id: string, newTitle: string) => {
+    onRenameNote(id, newTitle);
+    setEditingNoteId(null);
   };
 
   return (
@@ -331,11 +411,16 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
                   depth={0}
                   selectedNoteId={selectedNoteId}
                   expandedNotes={expandedNotes}
+                  editingNoteId={editingNoteId}
                   onToggleExpand={toggleNoteExpand}
                   onExpandNote={expandNote}
                   onSelectNote={onSelectNote}
                   onCreateNote={onCreateNote}
                   onArchiveNote={onArchiveNote}
+                  onContextMenu={handleContextMenu}
+                  onStartRename={(id) => setEditingNoteId(id)}
+                  onFinishRename={handleFinishRename}
+                  onCancelRename={() => setEditingNoteId(null)}
                 />
               ))
             )}
@@ -415,6 +500,40 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <span>Settings</span>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed bg-[#252525] border border-[#3a3a3a] rounded-lg shadow-xl py-1 min-w-[160px] z-50"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-[#e3e3e3] hover:bg-[#3a3a3a] transition-colors text-left cursor-pointer"
+            onClick={() => {
+              setEditingNoteId(contextMenu.noteId);
+              setContextMenu(null);
+            }}
+          >
+            <svg className="w-4 h-4 text-[#9b9b9b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Rename
+          </button>
+          <button
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-[#e3e3e3] hover:bg-[#3a3a3a] transition-colors text-left cursor-pointer"
+            onClick={() => {
+              onArchiveNote(contextMenu.noteId);
+              setContextMenu(null);
+            }}
+          >
+            <svg className="w-4 h-4 text-[#9b9b9b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            Archive
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
