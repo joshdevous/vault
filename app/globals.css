@@ -94,6 +94,60 @@
     font-size: 1.2em;
   }
 
+  /* Task list / Checklist styles */
+  .tiptap ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+  }
+
+  .tiptap ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+    margin: 0;
+  }
+
+  .tiptap ul[data-type="taskList"] li > label {
+    display: flex;
+    align-items: center;
+    margin-top: 0.15em;
+  }
+
+  .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #6b6b6b;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+    content: "✓";
+    display: block;
+    text-align: center;
+    font-size: 11px;
+    color: white;
+    line-height: 12px;
+  }
+
+  .tiptap ul[data-type="taskList"] li > div {
+    flex: 1;
+  }
+
+  .tiptap ul[data-type="taskList"] li[data-checked="true"] > div p {
+    text-decoration: line-through;
+    color: #6b6b6b;
+  }
+
   .tiptap strong {
     font-weight: 700;
   }

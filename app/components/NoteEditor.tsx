@@ -5,6 +5,8 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
 import { Note } from "@/types/models";
 
 interface NoteEditorProps {
@@ -78,8 +80,12 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
         },
       }),
       Underline,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
       Placeholder.configure({
-        placeholder: "Start writing... (Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, - for bullets)",
+        placeholder: "Start writing... (Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, - for bullets, [] for checklist)",
       }),
     ],
     content: note.content,
