@@ -67,7 +67,8 @@
   }
 
   .tiptap p.is-editor-empty:first-child::before {
-    content: attr(data-placeholder);
+    content: attr(data-placeholder) "\A\ACtrl+B bold  •  Ctrl+I italic  •  Ctrl+U underline\A-  bullets  •  1.  numbered  •  [ ]  checklist\A#  heading  •  >  quote  •  ```  code block";
+    white-space: pre-wrap;
     color: #4a4a4a;
     float: left;
     height: 0;

@@ -85,7 +85,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
         nested: true,
       }),
       Placeholder.configure({
-        placeholder: "Start writing... (Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, - for bullets, [] for checklist)",
+        placeholder: "Start typing...",
       }),
     ],
     content: note.content,
