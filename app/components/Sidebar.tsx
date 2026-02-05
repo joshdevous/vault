@@ -566,7 +566,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-[#9b9b9b] hover:bg-[#2f2f2f] rounded text-left cursor-pointer"
+            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
             onClick={() => {
               onCreateNote();
               setCreateMenu(null);
