@@ -13,6 +13,8 @@
     "electron:start": "electron ."
   },
   "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "@prisma/adapter-libsql": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.2.3",
