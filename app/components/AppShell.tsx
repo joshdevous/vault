@@ -73,6 +73,7 @@ export function AppShell() {
         selectedNoteId={selectedNoteId}
         onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
+        onGoHome={() => setSelectedNoteId(null)}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">
         {selectedNoteId ? (
@@ -95,21 +96,12 @@ export function AppShell() {
             <div className="flex-1 overflow-auto">
               <div className="max-w-3xl mx-auto px-24 py-20">
                 <h1 className="text-4xl font-bold text-[#e3e3e3] mb-4">Welcome to Mothership</h1>
-                <p className="text-[#9b9b9b] text-lg mb-8">
+                <p className="text-[#9b9b9b] text-lg">
                   {isLoading ? "Loading..." : notes.length === 0 
-                    ? "Create your first note to get started!"
+                    ? "Create your first note using the + button in the sidebar."
                     : "Select a note from the sidebar or create a new one."
                   }
                 </p>
-                <button
-                  onClick={handleCreateNote}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[rgba(255,255,255,0.055)] hover:bg-[rgba(255,255,255,0.1)] text-[#e3e3e3] rounded-lg transition-all"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Create a note
-                </button>
               </div>
             </div>
           </div>
