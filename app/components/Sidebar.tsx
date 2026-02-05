@@ -368,8 +368,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         <div 
           className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            setCreateMenu({ x: rect.right + 4, y: rect.top });
+            setCreateMenu({ x: e.clientX, y: e.clientY });
           }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
