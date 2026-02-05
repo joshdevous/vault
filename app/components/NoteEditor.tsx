@@ -9,6 +9,26 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { Note } from "@/types/models";
 
+// Document icon - filled if has content, outline if empty
+function NoteIcon({ hasContent, className = "" }: { hasContent: boolean; className?: string }) {
+  if (hasContent) {
+    return (
+      <svg className={`w-4 h-4 shrink-0 text-[#9b9b9b] ${className}`} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+        <path d="M14 2v6h6" fill="none" stroke="currentColor" strokeWidth="1"/>
+        <line x1="8" y1="13" x2="16" y2="13" stroke="#202020" strokeWidth="1.5"/>
+        <line x1="8" y1="17" x2="14" y2="17" stroke="#202020" strokeWidth="1.5"/>
+      </svg>
+    );
+  }
+  return (
+    <svg className={`w-4 h-4 shrink-0 text-[#6b6b6b] ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+      <polyline points="14,2 14,8 20,8"/>
+    </svg>
+  );
+}
+
 interface NoteEditorProps {
   note: Note;
   allNotes: Note[];
@@ -182,7 +202,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
               )}
               {index === breadcrumbs.length - 1 ? (
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="shrink-0">{crumb.icon}</span>
+                  <NoteIcon hasContent={crumb.content.length > 0 && crumb.content !== "<p></p>"} />
                   <span className="truncate">{crumb.id === note.id ? (title || "Untitled") : (crumb.title || "Untitled")}</span>
                 </div>
               ) : (
@@ -190,7 +210,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
                   onClick={() => onSelectNote(crumb.id)}
                   className="flex items-center gap-1.5 hover:text-[#e3e3e3] transition-colors min-w-0 cursor-pointer"
                 >
-                  <span className="shrink-0">{crumb.icon}</span>
+                  <NoteIcon hasContent={crumb.content.length > 0 && crumb.content !== "<p></p>"} />
                   <span className="truncate max-w-[120px]">{crumb.title || "Untitled"}</span>
                 </button>
               )}
