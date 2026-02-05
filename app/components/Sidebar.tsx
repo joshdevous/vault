@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Note } from "@/types/models";
 
 type SectionKey = "notes" | "vault" | "memories";
@@ -169,12 +169,30 @@ function NoteItem({
 }
 
 export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onGoHome, notes }: SidebarProps) {
-  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
-    notes: true,
-    vault: true,
-    memories: false,
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar-sections");
+      if (saved) return JSON.parse(saved);
+    }
+    return { notes: true, vault: true, memories: false };
   });
-  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("expanded-notes");
+      if (saved) return new Set(JSON.parse(saved));
+    }
+    return new Set();
+  });
+
+  // Persist open sections to localStorage
+  useEffect(() => {
+    localStorage.setItem("sidebar-sections", JSON.stringify(openSections));
+  }, [openSections]);
+
+  // Persist expanded notes to localStorage
+  useEffect(() => {
+    localStorage.setItem("expanded-notes", JSON.stringify([...expandedNotes]));
+  }, [expandedNotes]);
 
   const noteTree = useMemo(() => buildNoteTree(notes), [notes]);
 

@@ -7,8 +7,22 @@ import { Note } from "@/types/models";
 
 export function AppShell() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("selected-note-id");
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Persist selected note to localStorage
+  useEffect(() => {
+    if (selectedNoteId) {
+      localStorage.setItem("selected-note-id", selectedNoteId);
+    } else {
+      localStorage.removeItem("selected-note-id");
+    }
+  }, [selectedNoteId]);
 
   // Fetch all notes
   const fetchNotes = useCallback(async () => {
