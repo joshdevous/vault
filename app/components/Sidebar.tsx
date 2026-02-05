@@ -231,12 +231,12 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   return (
     <aside className="flex flex-col w-60 h-full bg-[#202020] border-r border-[#2f2f2f] shrink-0 select-none">
       {/* Workspace header */}
-      <div 
-        className="flex items-center h-11 px-3 hover:bg-[#2f2f2f] cursor-pointer"
-        onClick={onGoHome}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-medium text-white">
+      <div className="px-2 py-1">
+        <div 
+          className="flex items-center gap-2 px-2 py-[3px] hover:bg-[rgba(255,255,255,0.055)] rounded-[6px] cursor-pointer"
+          onClick={onGoHome}
+        >
+          <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-medium text-white shrink-0">
             M
           </div>
           <span className="text-sm font-medium text-[#e3e3e3] truncate">Mothership</span>
