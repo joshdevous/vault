@@ -450,10 +450,6 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
             onClick={() => onOpenVault()}
           >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
             <span>Vault</span>
           </div>
           <button
