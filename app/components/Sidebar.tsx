@@ -78,7 +78,7 @@ function NoteItem({
   return (
     <div>
       <div
-        className={`group flex items-center gap-1 pr-2 py-[5px] rounded-[6px] cursor-pointer text-sm transition-all ${
+        className={`group flex items-center gap-1 pr-2 py-[3px] rounded-[6px] cursor-pointer text-sm transition-all ${
           isSelected
             ? "text-[#ebebeb] bg-[rgba(255,255,255,0.055)]"
             : "text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb]"
