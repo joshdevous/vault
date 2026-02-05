@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET all notes
+// GET all notes (returns flat list, client builds tree)
 export async function GET() {
   try {
     const notes = await prisma.note.findMany({
-      orderBy: { updatedAt: "desc" },
+      orderBy: { order: "asc" },
     });
     return NextResponse.json(notes);
   } catch (error) {
@@ -15,13 +15,25 @@ export async function GET() {
 }
 
 // POST create new note
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const body = await request.json().catch(() => ({}));
+    const parentId = body.parentId || null;
+    
+    // Get the highest order among siblings
+    const maxOrderNote = await prisma.note.findFirst({
+      where: { parentId },
+      orderBy: { order: "desc" },
+    });
+    const newOrder = (maxOrderNote?.order ?? -1) + 1;
+    
     const note = await prisma.note.create({
       data: {
         title: "Untitled",
         content: "",
         icon: "📄",
+        parentId,
+        order: newOrder,
       },
     });
     return NextResponse.json(note);

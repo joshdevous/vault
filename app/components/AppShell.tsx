@@ -29,16 +29,18 @@ export function AppShell() {
     fetchNotes();
   }, [fetchNotes]);
 
-  // Create new note
-  const handleCreateNote = async () => {
+  // Create new note (optionally as a child)
+  const handleCreateNote = async (parentId?: string) => {
     try {
       const res = await fetch("/api/notes", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId: parentId || null }),
       });
 
       if (res.ok) {
         const newNote = await res.json();
-        setNotes((prev) => [newNote, ...prev]);
+        setNotes((prev) => [...prev, newNote]);
         setSelectedNoteId(newNote.id);
       }
     } catch (error) {

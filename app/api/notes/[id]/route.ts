@@ -38,6 +38,8 @@ export async function PATCH(
         ...(body.title !== undefined && { title: body.title }),
         ...(body.content !== undefined && { content: body.content }),
         ...(body.icon !== undefined && { icon: body.icon }),
+        ...(body.parentId !== undefined && { parentId: body.parentId }),
+        ...(body.order !== undefined && { order: body.order }),
       },
     });
     

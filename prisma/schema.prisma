@@ -15,6 +15,10 @@ model Note {
   title     String   @default("Untitled")
   content   String   @default("")
   icon      String   @default("📄")
+  order     Int      @default(0)
+  parentId  String?
+  parent    Note?    @relation("NoteToNote", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Note[]   @relation("NoteToNote")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

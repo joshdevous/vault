@@ -3,6 +3,8 @@ export interface Note {
   title: string;
   content: string;
   icon: string;
+  order: number;
+  parentId: string | null;
   createdAt: string;
   updatedAt: string;
 }
