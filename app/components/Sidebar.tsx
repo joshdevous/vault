@@ -63,8 +63,8 @@ export function Sidebar() {
           <span>Notes</span>
         </div>
         {openSections.notes && (
-          <div className="ml-1 mt-0.5">
-            <div className="flex items-center gap-2.5 px-2 py-[5px] text-[#ebebeb] bg-[#37352f14] bg-[rgba(255,255,255,0.055)] rounded-[4px] cursor-pointer text-sm transition-all">
+          <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
+            <div className="flex items-center gap-2.5 px-2 py-[5px] text-[#ebebeb] bg-[rgba(255,255,255,0.055)] rounded-[4px] cursor-pointer text-sm transition-all">
               <span className="text-[15px]">📄</span>
               <span className="truncate">Quick Notes</span>
             </div>
@@ -94,7 +94,7 @@ export function Sidebar() {
           <span>Vault</span>
         </div>
         {openSections.vault && (
-          <div className="ml-1 mt-0.5">
+          <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
             <div className="flex items-center gap-2.5 px-2 py-[5px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[4px] cursor-pointer text-sm transition-all">
               <span className="text-[15px]">🔐</span>
               <span className="truncate">Passwords</span>
@@ -125,7 +125,7 @@ export function Sidebar() {
           <span>Memories</span>
         </div>
         {openSections.memories && (
-          <div className="ml-1 mt-0.5">
+          <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
             <div className="flex items-center gap-2.5 px-2 py-[5px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[4px] cursor-pointer text-sm transition-all">
               <span className="text-[15px]">📸</span>
               <span className="truncate">Photos</span>
