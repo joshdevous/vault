@@ -101,7 +101,7 @@
 
   .tiptap ul[data-type="taskList"] li {
     display: flex;
-    align-items: flex-start;
+    align-items: baseline;
     gap: 0.5em;
     margin: 0;
   }
@@ -109,7 +109,8 @@
   .tiptap ul[data-type="taskList"] li > label {
     display: flex;
     align-items: center;
-    margin-top: 0.25em;
+    position: relative;
+    top: 0.2em;
   }
 
   .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
@@ -121,6 +122,7 @@
     background: transparent;
     cursor: pointer;
     transition: all 0.15s ease;
+    flex-shrink: 0;
   }
 
   .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
@@ -139,6 +141,11 @@
 
   .tiptap ul[data-type="taskList"] li > div {
     flex: 1;
+  }
+
+  .tiptap ul[data-type="taskList"] li > div p {
+    margin: 0;
+    line-height: 1.5;
   }
 
   .tiptap ul[data-type="taskList"] li[data-checked="true"] > div p {
