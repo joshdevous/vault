@@ -84,6 +84,7 @@ function NoteItem({
             : "text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb]"
         }`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
+        onClick={() => onSelectNote(note.id)}
       >
         {/* Expand/collapse toggle */}
         <button
@@ -91,7 +92,7 @@ function NoteItem({
             e.stopPropagation();
             onToggleExpand(note.id);
           }}
-          className={`w-4 h-4 flex items-center justify-center rounded hover:bg-[rgba(255,255,255,0.1)] ${
+          className={`w-4 h-4 flex items-center justify-center rounded hover:bg-[rgba(255,255,255,0.1)] cursor-pointer ${
             hasChildren ? "visible" : "invisible"
           }`}
         >
@@ -105,10 +106,7 @@ function NoteItem({
         </button>
 
         {/* Note content */}
-        <div
-          className="flex items-center gap-2 flex-1 min-w-0"
-          onClick={() => onSelectNote(note.id)}
-        >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-[15px] shrink-0">{note.icon}</span>
           <span className="truncate">{note.title || "Untitled"}</span>
         </div>
