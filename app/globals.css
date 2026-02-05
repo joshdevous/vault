@@ -114,9 +114,13 @@
   }
 
   .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px;
+    min-height: 16px;
     border: 2px solid #6b6b6b;
     border-radius: 3px;
     background: transparent;
