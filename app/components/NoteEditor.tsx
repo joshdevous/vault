@@ -118,34 +118,7 @@ export function NoteEditor({ noteId, onUpdate, onDelete }: NoteEditorProps) {
   };
 
   if (!note) {
-    return (
-      <div className="flex flex-col h-full">
-        {/* Top bar skeleton */}
-        <div className="flex items-center justify-between h-11 px-4 border-b border-[#2f2f2f] shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-[#2a2a2a] rounded animate-pulse" />
-            <div className="w-24 h-4 bg-[#2a2a2a] rounded animate-pulse" />
-          </div>
-        </div>
-        
-        {/* Content skeleton */}
-        <div className="flex-1 overflow-auto">
-          <div className="max-w-3xl mx-auto px-16 py-12">
-            {/* Title skeleton */}
-            <div className="w-64 h-10 bg-[#2a2a2a] rounded animate-pulse mb-6" />
-            
-            {/* Content lines skeleton */}
-            <div className="space-y-3">
-              <div className="w-full h-4 bg-[#2a2a2a] rounded animate-pulse" />
-              <div className="w-5/6 h-4 bg-[#2a2a2a] rounded animate-pulse" />
-              <div className="w-4/6 h-4 bg-[#2a2a2a] rounded animate-pulse" />
-              <div className="w-full h-4 bg-[#2a2a2a] rounded animate-pulse" />
-              <div className="w-3/4 h-4 bg-[#2a2a2a] rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
