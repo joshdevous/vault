@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Note } from "@/types/models";
 
-type SectionKey = "notes" | "vault" | "memories";
+type SectionKey = "notes" | "vault" | "memories" | "dreamJournal" | "voiceLog";
 
 interface NoteWithChildren extends Note {
   children: NoteWithChildren[];
@@ -254,6 +254,8 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
     notes: true,
     vault: true,
     memories: false,
+    dreamJournal: false,
+    voiceLog: false,
   });
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
@@ -502,6 +504,50 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             </div>
           </div>
         )}
+
+        {/* DREAM JOURNAL Section */}
+        <div
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-6"
+          onClick={() => toggleSection("dreamJournal")}
+        >
+          <svg
+            className={`w-3 h-3 transition-transform duration-150 ${openSections.dreamJournal ? "rotate-90" : ""}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span>Dream Journal</span>
+        </div>
+        {openSections.dreamJournal && (
+          <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
+            <div className="px-2 py-2 text-[#6b6b6b] text-sm italic">
+              No dreams yet
+            </div>
+          </div>
+        )}
+
+        {/* VOICE LOG Section */}
+        <div
+          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-6"
+          onClick={() => toggleSection("voiceLog")}
+        >
+          <svg
+            className={`w-3 h-3 transition-transform duration-150 ${openSections.voiceLog ? "rotate-90" : ""}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span>Voice Log</span>
+        </div>
+        {openSections.voiceLog && (
+          <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
+            <div className="px-2 py-2 text-[#6b6b6b] text-sm italic">
+              No recordings yet
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Divider */}
@@ -602,6 +648,18 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
               <line x1="8" y1="23" x2="16" y2="23"/>
             </svg>
             Voice Log
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
+            onClick={() => {
+              setCreateMenu(null);
+            }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            Memory
           </button>
         </div>
       )}
