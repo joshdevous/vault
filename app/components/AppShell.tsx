@@ -109,21 +109,19 @@ export function AppShell() {
     }
   };
 
-  // Rename note
+  // Rename note (optimistic update)
   const handleRenameNote = async (id: string, newTitle: string) => {
+    // Optimistic update - update immediately
+    setNotes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, title: newTitle } : n))
+    );
+
     try {
-      const res = await fetch(`/api/notes/${id}`, {
+      await fetch(`/api/notes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle }),
       });
-
-      if (res.ok) {
-        const updatedNote = await res.json();
-        setNotes((prev) =>
-          prev.map((n) => (n.id === updatedNote.id ? updatedNote : n))
-        );
-      }
     } catch (error) {
       console.error("Failed to rename note:", error);
     }

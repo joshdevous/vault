@@ -43,6 +43,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sync title when note changes externally (e.g., renamed from sidebar)
+  useEffect(() => {
+    setTitle(note.title);
+  }, [note.title]);
+
   // Build breadcrumb trail from current note to root
   const breadcrumbs = useMemo(() => {
     const trail: Note[] = [];
