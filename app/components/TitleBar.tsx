@@ -1,26 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 export function TitleBar() {
+  const [isElectron, setIsElectron] = useState(false);
+
+  useEffect(() => {
+    setIsElectron(!!window.electronAPI);
+  }, []);
+
   const handleMinimize = () => {
-    if (typeof window !== "undefined" && window.electronAPI) {
-      window.electronAPI.minimize();
-    }
+    window.electronAPI?.minimize();
   };
 
   const handleMaximize = () => {
-    if (typeof window !== "undefined" && window.electronAPI) {
-      window.electronAPI.maximize();
-    }
+    window.electronAPI?.maximize();
   };
 
   const handleClose = () => {
-    if (typeof window !== "undefined" && window.electronAPI) {
-      window.electronAPI.close();
-    }
+    window.electronAPI?.close();
   };
 
-  // Only render if in Electron
-  if (typeof window === "undefined" || !window.electronAPI) {
+  // Don't render until we know if we're in Electron
+  if (!isElectron) {
     return null;
   }
 
