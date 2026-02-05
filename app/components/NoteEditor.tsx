@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Note } from "@/types/models";
 
 interface NoteEditorProps {
@@ -13,7 +17,6 @@ interface NoteEditorProps {
 
 export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }: NoteEditorProps) {
   const [title, setTitle] = useState(note.title);
-  const [content, setContent] = useState(note.content);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -55,7 +58,65 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
     }
   }, [note.id, onUpdate]);
 
-  // Debounced auto-save on content change
+  // TipTap editor
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: {
+          HTMLAttributes: {
+            class: "list-disc pl-6 space-y-1",
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: "list-decimal pl-6 space-y-1",
+          },
+        },
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      Placeholder.configure({
+        placeholder: "Start writing... (Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, - for bullets)",
+      }),
+    ],
+    content: note.content,
+    editorProps: {
+      attributes: {
+        class: "prose prose-invert max-w-none focus:outline-none min-h-[calc(100vh-250px)] text-[#e3e3e3] text-base leading-relaxed",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Set new timeout for auto-save (500ms debounce)
+      saveTimeoutRef.current = setTimeout(() => {
+        saveNote(title, html);
+      }, 500);
+    },
+  });
+
+  // Update editor content when note changes
+  useEffect(() => {
+    if (editor && note.content !== editor.getHTML()) {
+      editor.commands.setContent(note.content);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.id, editor]);
+
+  // Update title ref for save function
+  const titleRef = useRef(title);
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+
+  // Debounced auto-save on title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
@@ -70,22 +131,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
 
     // Set new timeout for auto-save (500ms debounce)
     saveTimeoutRef.current = setTimeout(() => {
-      saveNote(newTitle, content);
-    }, 500);
-  };
-
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    setContent(newContent);
-
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for auto-save (500ms debounce)
-    saveTimeoutRef.current = setTimeout(() => {
-      saveNote(title, newContent);
+      saveNote(newTitle, editor?.getHTML() || note.content);
     }, 500);
   };
 
@@ -153,7 +199,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
           )}
           <button
             onClick={handleDelete}
-            className="p-1.5 text-[#9b9b9b] hover:text-red-400 hover:bg-[rgba(255,255,255,0.055)] rounded transition-all"
+            className="p-1.5 text-[#9b9b9b] hover:text-red-400 hover:bg-[rgba(255,255,255,0.055)] rounded transition-all cursor-pointer"
             title="Delete note"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,13 +221,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
             className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none placeholder-[#4a4a4a] mb-4"
           />
 
-          {/* Content */}
-          <textarea
-            value={content}
-            onChange={handleContentChange}
-            placeholder="Start writing..."
-            className="w-full min-h-[calc(100vh-250px)] text-[#e3e3e3] bg-transparent border-none outline-none resize-none placeholder-[#4a4a4a] text-base leading-relaxed"
-          />
+          {/* Rich Text Editor */}
+          <EditorContent editor={editor} />
         </div>
       </div>
     </div>
