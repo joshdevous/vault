@@ -1,4 +1,20 @@
+"use client";
+
+import { useState } from "react";
+
+type SectionKey = "notes" | "vault" | "memories";
+
 export function Sidebar() {
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
+    notes: true,
+    vault: true,
+    memories: false,
+  });
+
+  const toggleSection = (section: SectionKey) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
   return (
     <aside className="flex flex-col w-60 h-full bg-[#202020] border-r border-[#2f2f2f] shrink-0">
       {/* Workspace header */}
@@ -30,25 +46,100 @@ export function Sidebar() {
       {/* Divider */}
       <div className="h-px bg-[#2f2f2f] mx-2 my-1" />
 
-      {/* Pages section */}
+      {/* Sections */}
       <div className="flex-1 overflow-auto px-2 py-1">
-        <div className="text-xs font-medium text-[#6b6b6b] px-2 py-1.5 uppercase tracking-wider">
-          Private
+        {/* NOTES Section */}
+        <div
+          className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-[#6b6b6b] uppercase tracking-wider cursor-pointer hover:bg-[#2f2f2f] rounded"
+          onClick={() => toggleSection("notes")}
+        >
+          <svg
+            className={`w-3 h-3 transition-transform ${openSections.notes ? "rotate-90" : ""}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span>Notes</span>
         </div>
-        
-        {/* Sample pages */}
-        <div className="flex items-center gap-2 px-2 py-1.5 text-[#e3e3e3] bg-[#2f2f2f] rounded cursor-pointer text-sm">
-          <span className="text-base">📄</span>
-          <span className="truncate">Home</span>
+        {openSections.notes && (
+          <div className="ml-2">
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#e3e3e3] bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">📄</span>
+              <span className="truncate">Quick Notes</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">📝</span>
+              <span className="truncate">Meeting Notes</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">💡</span>
+              <span className="truncate">Ideas</span>
+            </div>
+          </div>
+        )}
+
+        {/* VAULT Section */}
+        <div
+          className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-[#6b6b6b] uppercase tracking-wider cursor-pointer hover:bg-[#2f2f2f] rounded mt-2"
+          onClick={() => toggleSection("vault")}
+        >
+          <svg
+            className={`w-3 h-3 transition-transform ${openSections.vault ? "rotate-90" : ""}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span>Vault</span>
         </div>
-        <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
-          <span className="text-base">📝</span>
-          <span className="truncate">Notes</span>
+        {openSections.vault && (
+          <div className="ml-2">
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">🔐</span>
+              <span className="truncate">Passwords</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">🔑</span>
+              <span className="truncate">API Keys</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">📁</span>
+              <span className="truncate">Secure Documents</span>
+            </div>
+          </div>
+        )}
+
+        {/* MEMORIES Section */}
+        <div
+          className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-[#6b6b6b] uppercase tracking-wider cursor-pointer hover:bg-[#2f2f2f] rounded mt-2"
+          onClick={() => toggleSection("memories")}
+        >
+          <svg
+            className={`w-3 h-3 transition-transform ${openSections.memories ? "rotate-90" : ""}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span>Memories</span>
         </div>
-        <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
-          <span className="text-base">✅</span>
-          <span className="truncate">Tasks</span>
-        </div>
+        {openSections.memories && (
+          <div className="ml-2">
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">📸</span>
+              <span className="truncate">Photos</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">🎥</span>
+              <span className="truncate">Videos</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+              <span className="text-base">📅</span>
+              <span className="truncate">Journal</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom section */}
