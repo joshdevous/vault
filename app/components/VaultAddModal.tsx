@@ -200,7 +200,7 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag }: VaultAddMo
             />
             {/* Quick tag buttons */}
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {["music", "shows", "food", "youtube", "work"].map((tag) => {
+              {["shows", "music", "topics", "food", "youtube", "work"].map((tag) => {
                 const tagList = tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
                 const isActive = tagList.includes(tag);
                 return (

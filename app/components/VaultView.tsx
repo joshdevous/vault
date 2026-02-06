@@ -15,7 +15,7 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Quick filter tags
-  const quickTags = ["music", "shows", "food", "youtube", "work"];
+  const quickTags = ["shows", "music", "topics", "food", "youtube", "work"];
 
   const filteredItems = vaultItems.filter((item) => {
     // First filter by active tag if set
