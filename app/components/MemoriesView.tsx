@@ -197,7 +197,6 @@ export function MemoriesView({
                         </div>
                       </div>
                     )}
-                    <div className="mt-2 text-xs text-[#6b6b6b]">{new Date(memory.createdAt).toLocaleDateString()}</div>
                   </div>
                 ))}
               </div>
