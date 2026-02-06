@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET all occasions with their memories
+// GET all occasions with their memories and images
 export async function GET() {
   try {
     const occasions = await prisma.occasion.findMany({
-      include: { memories: { orderBy: { order: "asc" } } },
+      include: { 
+        memories: { orderBy: { order: "asc" } },
+        images: { orderBy: { order: "asc" } },
+      },
       orderBy: { order: "asc" },
     });
     return NextResponse.json(occasions);

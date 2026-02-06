@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Occasion } from "@/types/models";
+import { useState, useRef } from "react";
+import { Occasion, OccasionImage } from "@/types/models";
 
 interface MemoriesViewProps {
   occasions: Occasion[];
@@ -13,6 +13,8 @@ interface MemoriesViewProps {
   onDeleteOccasion: (id: string) => Promise<void>;
   onUpdateMemory: (occasionId: string, memoryId: string, content: string) => Promise<void>;
   onDeleteMemory: (occasionId: string, memoryId: string) => Promise<void>;
+  onUploadImages: (occasionId: string, files: File[]) => Promise<void>;
+  onDeleteImage: (occasionId: string, imageId: string) => Promise<void>;
 }
 
 export function MemoriesView({
@@ -25,6 +27,8 @@ export function MemoriesView({
   onDeleteOccasion,
   onUpdateMemory,
   onDeleteMemory,
+  onUploadImages,
+  onDeleteImage,
 }: MemoriesViewProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newMemoryContent, setNewMemoryContent] = useState("");
@@ -33,6 +37,9 @@ export function MemoriesView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
   const [editingMemoryContent, setEditingMemoryContent] = useState("");
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<OccasionImage | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingOccasionTitle, setEditingOccasionTitle] = useState("");
   const [isEditingOccasionTitle, setIsEditingOccasionTitle] = useState(false);
 
@@ -87,6 +94,21 @@ export function MemoriesView({
     setIsEditingOccasionTitle(false);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !selectedOccasionId) return;
+    
+    setIsUploadingImages(true);
+    try {
+      await onUploadImages(selectedOccasionId, Array.from(files));
+    } finally {
+      setIsUploadingImages(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const filteredOccasions = occasionInput
     ? occasions.filter((o) => o.title.toLowerCase().includes(occasionInput.toLowerCase()))
     : occasions;
@@ -139,6 +161,24 @@ export function MemoriesView({
               )}
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImages}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#2f2f2f] hover:bg-[#3f3f3f] text-[#ebebeb] text-sm rounded-md disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {isUploadingImages ? "Uploading..." : "Add Photos"}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <button
                   onClick={() => handleOpenAddModal(selectedOccasion.id)}
                   className="flex items-center gap-2 px-3 py-1.5 bg-[#2f2f2f] hover:bg-[#3f3f3f] text-[#ebebeb] text-sm rounded-md"
                 >
@@ -150,14 +190,44 @@ export function MemoriesView({
               </div>
             </div>
 
-            {memories.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-[#6b6b6b]">No memories yet</p>
-                <button onClick={() => handleOpenAddModal(selectedOccasion.id)} className="mt-4 text-sm text-[#9b9b9b] hover:text-[#ebebeb]">
-                  Add your first memory →
-                </button>
+            {/* Image Gallery */}
+            {(selectedOccasion.images?.length ?? 0) > 0 && (
+              <div className="mb-8">
+                <h2 className="text-sm font-medium text-[#9b9b9b] mb-3">Photos</h2>
+                <div className="grid grid-cols-4 gap-2">
+                  {selectedOccasion.images?.map((image) => (
+                    <div key={image.id} className="relative group aspect-square">
+                      <img
+                        src={`/api/images/${image.filename}`}
+                        alt=""
+                        className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90"
+                        onClick={() => setLightboxImage(image)}
+                      />
+                      <button
+                        onClick={() => onDeleteImage(selectedOccasion.id, image.id)}
+                        className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-black/70 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
+            )}
+
+            {/* Memories Section */}
+            <div>
+              <h2 className="text-sm font-medium text-[#9b9b9b] mb-3">Memories</h2>
+              {memories.length === 0 ? (
+                <div className="text-center py-8 bg-[#252525] rounded-lg border border-[#3f3f3f]">
+                  <p className="text-[#6b6b6b]">No memories yet</p>
+                  <button onClick={() => handleOpenAddModal(selectedOccasion.id)} className="mt-2 text-sm text-[#9b9b9b] hover:text-[#ebebeb]">
+                    Add your first memory →
+                  </button>
+                </div>
+              ) : (
               <div className="space-y-3">
                 {memories.map((memory) => (
                   <div key={memory.id} className="group p-4 bg-[#252525] rounded-lg border border-[#3f3f3f]">
@@ -201,8 +271,32 @@ export function MemoriesView({
                 ))}
               </div>
             )}
+            </div>
           </div>
         </div>
+
+        {/* Lightbox */}
+        {lightboxImage && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+            onClick={() => setLightboxImage(null)}
+          >
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute top-4 right-4 p-2 text-white/70 hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              src={`/api/images/${lightboxImage.filename}`}
+              alt=""
+              className="max-w-[90vw] max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
 
         {isAddModalOpen && (
           <AddMemoryModal

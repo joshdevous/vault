@@ -25,6 +25,7 @@ export interface Occasion {
   icon: string;
   order: number;
   memories?: Memory[];
+  images?: OccasionImage[];
   createdAt: string;
   updatedAt: string;
 }
@@ -36,4 +37,12 @@ export interface Memory {
   occasionId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OccasionImage {
+  id: string;
+  filename: string;
+  order: number;
+  occasionId: string;
+  createdAt: string;
 }

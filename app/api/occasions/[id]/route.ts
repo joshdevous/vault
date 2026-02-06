@@ -10,7 +10,10 @@ export async function GET(
     const { id } = await params;
     const occasion = await prisma.occasion.findUnique({
       where: { id },
-      include: { memories: { orderBy: { order: "asc" } } },
+      include: { 
+        memories: { orderBy: { order: "asc" } },
+        images: { orderBy: { order: "asc" } },
+      },
     });
     
     if (!occasion) {

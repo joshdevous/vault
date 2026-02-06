@@ -412,6 +412,50 @@ export function AppShell() {
     }
   };
 
+  // Upload images to occasion
+  const handleUploadImages = async (occasionId: string, files: File[]) => {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append("images", file));
+      
+      const res = await fetch(`/api/occasions/${occasionId}/images`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (res.ok) {
+        const newImages = await res.json();
+        setOccasions((prev) =>
+          prev.map((o) =>
+            o.id === occasionId
+              ? { ...o, images: [...(o.images || []), ...newImages] }
+              : o
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to upload images:", error);
+    }
+  };
+
+  // Delete image from occasion
+  const handleDeleteImage = async (occasionId: string, imageId: string) => {
+    try {
+      const res = await fetch(`/api/occasions/${occasionId}/images/${imageId}`, { method: "DELETE" });
+      if (res.ok) {
+        setOccasions((prev) =>
+          prev.map((o) =>
+            o.id === occasionId
+              ? { ...o, images: (o.images || []).filter((img) => img.id !== imageId) }
+              : o
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete image:", error);
+    }
+  };
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
@@ -455,6 +499,8 @@ export function AppShell() {
             onDeleteOccasion={handleDeleteOccasion}
             onUpdateMemory={handleUpdateMemory}
             onDeleteMemory={handleDeleteMemory}
+            onUploadImages={handleUploadImages}
+            onDeleteImage={handleDeleteImage}
           />
         ) : (
           <div className="flex flex-col h-full">
