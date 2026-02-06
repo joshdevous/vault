@@ -5,13 +5,15 @@ import { Sidebar } from "./Sidebar";
 import { NoteEditor } from "./NoteEditor";
 import { VaultView } from "./VaultView";
 import { VaultAddModal } from "./VaultAddModal";
-import { Note, VaultItem } from "@/types/models";
+import { MemoriesView } from "./MemoriesView";
+import { Note, VaultItem, Occasion } from "@/types/models";
 
-type ViewType = "home" | "note" | "vault";
+type ViewType = "home" | "note" | "vault" | "memories";
 
 export function AppShell() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
+  const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>("home");
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
@@ -66,10 +68,24 @@ export function AppShell() {
     }
   }, []);
 
+  // Fetch all occasions with memories
+  const fetchOccasions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/occasions");
+      if (res.ok) {
+        const data = await res.json();
+        setOccasions(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch occasions:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotes();
     fetchVaultItems();
-  }, [fetchNotes, fetchVaultItems]);
+    fetchOccasions();
+  }, [fetchNotes, fetchVaultItems, fetchOccasions]);
 
   // Create new note (optionally as a child)
   const handleCreateNote = async (parentId?: string) => {
@@ -259,6 +275,122 @@ export function AppShell() {
     }
   };
 
+  // Open memories view
+  const handleOpenMemories = () => {
+    setSelectedNoteId(null);
+    setCurrentView("memories");
+  };
+
+  // Create occasion
+  const handleCreateOccasion = async (title: string) => {
+    try {
+      const res = await fetch("/api/occasions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (res.ok) {
+        const newOccasion = await res.json();
+        setOccasions((prev) => [...prev, newOccasion]);
+      }
+    } catch (error) {
+      console.error("Failed to create occasion:", error);
+    }
+  };
+
+  // Update occasion
+  const handleUpdateOccasion = async (id: string, title: string) => {
+    try {
+      const res = await fetch(`/api/occasions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setOccasions((prev) => prev.map((o) => (o.id === id ? updated : o)));
+      }
+    } catch (error) {
+      console.error("Failed to update occasion:", error);
+    }
+  };
+
+  // Delete occasion
+  const handleDeleteOccasion = async (id: string) => {
+    try {
+      const res = await fetch(`/api/occasions/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setOccasions((prev) => prev.filter((o) => o.id !== id));
+      }
+    } catch (error) {
+      console.error("Failed to delete occasion:", error);
+    }
+  };
+
+  // Create memory
+  const handleCreateMemory = async (occasionId: string, content: string) => {
+    try {
+      const res = await fetch(`/api/occasions/${occasionId}/memories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const newMemory = await res.json();
+        setOccasions((prev) =>
+          prev.map((o) =>
+            o.id === occasionId
+              ? { ...o, memories: [...(o.memories || []), newMemory] }
+              : o
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to create memory:", error);
+    }
+  };
+
+  // Update memory
+  const handleUpdateMemory = async (occasionId: string, memoryId: string, content: string) => {
+    try {
+      const res = await fetch(`/api/occasions/${occasionId}/memories/${memoryId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setOccasions((prev) =>
+          prev.map((o) =>
+            o.id === occasionId
+              ? { ...o, memories: (o.memories || []).map((m) => (m.id === memoryId ? updated : m)) }
+              : o
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update memory:", error);
+    }
+  };
+
+  // Delete memory
+  const handleDeleteMemory = async (occasionId: string, memoryId: string) => {
+    try {
+      const res = await fetch(`/api/occasions/${occasionId}/memories/${memoryId}`, { method: "DELETE" });
+      if (res.ok) {
+        setOccasions((prev) =>
+          prev.map((o) =>
+            o.id === occasionId
+              ? { ...o, memories: (o.memories || []).filter((m) => m.id !== memoryId) }
+              : o
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete memory:", error);
+    }
+  };
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
@@ -271,6 +403,7 @@ export function AppShell() {
         onMoveNote={handleMoveNote}
         onOpenVault={handleOpenVault}
         onOpenVaultAddModal={handleOpenVaultAddModal}
+        onOpenMemories={handleOpenMemories}
         onGoHome={() => { setSelectedNoteId(null); setCurrentView("home"); }}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">
@@ -288,6 +421,16 @@ export function AppShell() {
             vaultItems={vaultItems}
             onDeleteVaultItem={handleDeleteVaultItem}
             onOpenAddModal={handleOpenVaultAddModal}
+          />
+        ) : currentView === "memories" ? (
+          <MemoriesView
+            occasions={occasions}
+            onCreateOccasion={handleCreateOccasion}
+            onUpdateOccasion={handleUpdateOccasion}
+            onDeleteOccasion={handleDeleteOccasion}
+            onCreateMemory={handleCreateMemory}
+            onUpdateMemory={handleUpdateMemory}
+            onDeleteMemory={handleDeleteMemory}
           />
         ) : (
           <div className="flex flex-col h-full">

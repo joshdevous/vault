@@ -34,13 +34,24 @@ model VaultItem {
   updatedAt DateTime @updatedAt
 }
 
-// Memories - photos, videos, journal entries
-model Memory {
+// Occasions - groups of memories (e.g., "Festival 2025", "Amsterdam 2025")
+model Occasion {
   id        String   @id @default(cuid())
   title     String   @default("Untitled")
-  content   String   @default("")
   icon      String   @default("📸")
-  type      String   @default("journal") // photo, video, journal
+  order     Int      @default(0)
+  memories  Memory[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Memories - text entries under an occasion
+model Memory {
+  id         String   @id @default(cuid())
+  content    String   @default("")
+  order      Int      @default(0)
+  occasionId String
+  occasion   Occasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

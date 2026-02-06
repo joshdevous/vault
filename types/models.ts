@@ -19,12 +19,21 @@ export interface VaultItem {
   updatedAt: string;
 }
 
-export interface Memory {
+export interface Occasion {
   id: string;
   title: string;
-  content: string;
   icon: string;
-  type: string;
+  order: number;
+  memories?: Memory[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Memory {
+  id: string;
+  content: string;
+  order: number;
+  occasionId: string;
   createdAt: string;
   updatedAt: string;
 }

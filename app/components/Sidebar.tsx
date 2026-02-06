@@ -25,6 +25,7 @@ interface SidebarProps {
   onGoHome: () => void;
   onOpenVault: () => void;
   onOpenVaultAddModal: (tag?: string) => void;
+  onOpenMemories: () => void;
   notes: Note[];
 }
 
@@ -304,7 +305,7 @@ interface CreateMenuState {
   y: number;
 }
 
-export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onMoveNote, onGoHome, onOpenVault, onOpenVaultAddModal, notes }: SidebarProps) {
+export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onMoveNote, onGoHome, onOpenVault, onOpenVaultAddModal, onOpenMemories, notes }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
     vault: true,
@@ -619,35 +620,14 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         </div>
 
         {/* MEMORIES Section */}
-        <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors mt-5"
-          onClick={() => toggleSection("memories")}
-        >
-          <svg
-            className={`w-3 h-3 transition-transform duration-150 ${openSections.memories ? "rotate-90" : ""}`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
+        <div className="flex items-center justify-between mt-5">
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
+            onClick={() => onOpenMemories()}
           >
-            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-          </svg>
-          <span>Memories</span>
-        </div>
-        {openSections.memories && (
-          <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
-            <div className="flex items-center gap-2.5 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all">
-              <span className="text-[15px]">📸</span>
-              <span className="truncate">Photos</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all">
-              <span className="text-[15px]">🎥</span>
-              <span className="truncate">Videos</span>
-            </div>
-            <div className="flex items-center gap-2.5 px-2 py-[3px] text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] cursor-pointer text-sm transition-all">
-              <span className="text-[15px]">📅</span>
-              <span className="truncate">Journal</span>
-            </div>
+            <span>Memories</span>
           </div>
-        )}
+        </div>
 
         {/* DREAM JOURNAL Section */}
         <div
