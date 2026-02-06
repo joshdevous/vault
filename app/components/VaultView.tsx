@@ -19,19 +19,23 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
   
   // Compute all unique tags from vault items
   const allTags = (() => {
-    const tagSet = new Set<string>();
+    const tagCounts = new Map<string, number>();
     vaultItems.forEach((item) => {
       if (item.tags) {
         item.tags.split(",").forEach((t) => {
           const trimmed = t.trim().toLowerCase();
-          if (trimmed) tagSet.add(trimmed);
+          if (trimmed) {
+            tagCounts.set(trimmed, (tagCounts.get(trimmed) || 0) + 1);
+          }
         });
       }
     });
     
-    // Priority tags first (only if they exist in items), then remaining tags alphabetically
-    const existingPriority = priorityTags.filter((t) => tagSet.has(t));
-    const remainingTags = [...tagSet].filter((t) => !priorityTags.includes(t)).sort();
+    // Priority tags first (only if they exist in items), then remaining tags by usage count
+    const existingPriority = priorityTags.filter((t) => tagCounts.has(t));
+    const remainingTags = [...tagCounts.keys()]
+      .filter((t) => !priorityTags.includes(t))
+      .sort((a, b) => (tagCounts.get(b) || 0) - (tagCounts.get(a) || 0));
     return [...existingPriority, ...remainingTags];
   })();
 

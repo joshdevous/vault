@@ -103,20 +103,24 @@ export function AppShell() {
     setCurrentView("vault");
   };
 
-  // Compute available tags for vault (priority tags first, then others alphabetically)
+  // Compute available tags for vault (priority tags first, then others by usage count)
   const priorityTags = ["shows", "music", "topics", "food", "youtube", "work"];
   const availableVaultTags = (() => {
-    const tagSet = new Set<string>();
+    const tagCounts = new Map<string, number>();
     vaultItems.forEach((item) => {
       if (item.tags) {
         item.tags.split(",").forEach((t) => {
           const trimmed = t.trim().toLowerCase();
-          if (trimmed) tagSet.add(trimmed);
+          if (trimmed) {
+            tagCounts.set(trimmed, (tagCounts.get(trimmed) || 0) + 1);
+          }
         });
       }
     });
-    const existingPriority = priorityTags.filter((t) => tagSet.has(t));
-    const remainingTags = [...tagSet].filter((t) => !priorityTags.includes(t)).sort();
+    const existingPriority = priorityTags.filter((t) => tagCounts.has(t));
+    const remainingTags = [...tagCounts.keys()]
+      .filter((t) => !priorityTags.includes(t))
+      .sort((a, b) => (tagCounts.get(b) || 0) - (tagCounts.get(a) || 0));
     return [...existingPriority, ...remainingTags];
   })();
 
