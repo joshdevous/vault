@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Occasion } from "@/types/models";
+import { VoiceRecorder } from "./VoiceRecorder";
 
 interface MemoryAddModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ export function MemoryAddModal({
   onCreateOccasionAndMemory,
   onCreateMemory,
 }: MemoryAddModalProps) {
-  const [newMemoryContent, setNewMemoryContent] = useState("");
+  const [transcribedText, setTranscribedText] = useState("");
   const [occasionInput, setOccasionInput] = useState("");
   const [selectedExistingOccasion, setSelectedExistingOccasion] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,23 +34,27 @@ export function MemoryAddModal({
   const selectedOccasion = occasions.find((o) => o.id === selectedExistingOccasion);
 
   const handleClose = () => {
-    setNewMemoryContent("");
+    setTranscribedText("");
     setOccasionInput("");
     setSelectedExistingOccasion(null);
     setShowSuggestions(false);
     onClose();
   };
 
+  const handleTranscription = (text: string) => {
+    setTranscribedText((prev) => prev ? `${prev}\n${text}` : text);
+  };
+
   const handleSubmit = async () => {
-    if (!newMemoryContent.trim()) return;
+    if (!transcribedText.trim()) return;
     if (!selectedExistingOccasion && !occasionInput.trim()) return;
 
     setIsSubmitting(true);
     try {
       if (selectedExistingOccasion) {
-        await onCreateMemory(selectedExistingOccasion, newMemoryContent.trim());
+        await onCreateMemory(selectedExistingOccasion, transcribedText.trim());
       } else {
-        await onCreateOccasionAndMemory(occasionInput.trim(), newMemoryContent.trim());
+        await onCreateOccasionAndMemory(occasionInput.trim(), transcribedText.trim());
       }
       handleClose();
     } finally {
@@ -57,12 +62,14 @@ export function MemoryAddModal({
     }
   };
 
+  const canSubmit = transcribedText.trim() && (selectedExistingOccasion || occasionInput.trim());
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={handleClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-2xl w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#3f3f3f]">
-          <h2 className="text-sm font-medium text-[#ebebeb]">Add Memory</h2>
+          <h2 className="text-sm font-medium text-[#ebebeb]">Record Memory</h2>
           <button onClick={handleClose} className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -71,6 +78,7 @@ export function MemoryAddModal({
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Occasion selector */}
           <div className="relative">
             <label className="block text-xs text-[#9b9b9b] mb-1.5">
               Occasion <span className="text-[#6b6b6b]">(select or type new)</span>
@@ -112,26 +120,38 @@ export function MemoryAddModal({
             )}
           </div>
 
-          <div>
-            <label className="block text-xs text-[#9b9b9b] mb-1.5">Memory</label>
-            <textarea
-              placeholder="What do you want to remember?"
-              value={newMemoryContent}
-              onChange={(e) => setNewMemoryContent(e.target.value)}
-              rows={4}
-              className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b] resize-none"
-            />
+          {/* Voice recorder */}
+          <div className="py-4">
+            <VoiceRecorder onTranscription={handleTranscription} disabled={isSubmitting} />
           </div>
+
+          {/* Transcribed text preview */}
+          {transcribedText && (
+            <div className="bg-[#1a1a1a] rounded-md border border-[#3f3f3f] p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-[#6b6b6b]">Transcribed:</span>
+                <button 
+                  onClick={() => setTranscribedText("")}
+                  className="text-xs text-[#6b6b6b] hover:text-[#ebebeb]"
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="text-sm text-[#ebebeb] whitespace-pre-wrap">{transcribedText}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#3f3f3f]">
-          <button onClick={handleClose} className="px-3 py-1.5 text-sm text-[#9b9b9b] hover:text-[#ebebeb] rounded-md">Cancel</button>
+          <button onClick={handleClose} className="px-3 py-1.5 text-sm text-[#9b9b9b] hover:text-[#ebebeb] rounded-md">
+            Cancel
+          </button>
           <button
             onClick={handleSubmit}
-            disabled={!newMemoryContent.trim() || (!selectedExistingOccasion && !occasionInput.trim()) || isSubmitting}
+            disabled={!canSubmit || isSubmitting}
             className="px-3 py-1.5 text-sm bg-[#4f4f4f] hover:bg-[#5f5f5f] disabled:bg-[#3f3f3f] disabled:text-[#6b6b6b] text-[#ebebeb] rounded-md"
           >
-            {isSubmitting ? "Adding..." : "Add Memory"}
+            {isSubmitting ? "Saving..." : "Save Memory"}
           </button>
         </div>
       </div>
