@@ -175,7 +175,7 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
                           )}
                         </div>
                       )}
-                      {item.tags && (
+                      {item.tags && !activeTag && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {item.tags.split(",").map((tag, i) => (
                             <span
