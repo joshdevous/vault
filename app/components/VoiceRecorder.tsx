@@ -67,11 +67,14 @@ export function VoiceRecorder({ onTranscription, disabled }: VoiceRecorderProps)
   const [state, setState] = useState<RecordingState>("idle");
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -80,12 +83,32 @@ export function VoiceRecorder({ onTranscription, disabled }: VoiceRecorderProps)
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
     };
-  }, []);
+  }, [audioUrl]);
+
+  const togglePlayback = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
 
   const startRecording = async () => {
     try {
       setError(null);
+      // Clear previous recording
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -123,6 +146,10 @@ export function VoiceRecorder({ onTranscription, disabled }: VoiceRecorderProps)
         setState("processing");
         
         const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+        
+        // Create URL for playback
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
         
         try {
           // Convert to WAV format for server-side processing
@@ -239,7 +266,7 @@ export function VoiceRecorder({ onTranscription, disabled }: VoiceRecorderProps)
             Transcribing...
           </div>
         )}
-        {state === "idle" && !error && (
+        {state === "idle" && !error && !audioUrl && (
           <div className="text-[#6b6b6b] text-sm">
             Tap to record
           </div>
@@ -250,6 +277,34 @@ export function VoiceRecorder({ onTranscription, disabled }: VoiceRecorderProps)
           </div>
         )}
       </div>
+
+      {/* Audio playback */}
+      {audioUrl && state === "idle" && (
+        <div className="flex items-center gap-3 bg-[#1a1a1a] px-4 py-2 rounded-lg">
+          <audio 
+            ref={audioRef} 
+            src={audioUrl} 
+            onEnded={() => setIsPlaying(false)}
+            className="hidden"
+          />
+          <button
+            onClick={togglePlayback}
+            className="w-10 h-10 flex items-center justify-center bg-[#3f3f3f] hover:bg-[#4f4f4f] rounded-full text-white"
+          >
+            {isPlaying ? (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <span className="text-xs text-[#9b9b9b]">Play recording</span>
+        </div>
+      )}
     </div>
   );
 }
