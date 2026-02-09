@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getImagesDir } from "@/lib/paths";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
-
-function getImagesDir() {
-  return path.join(process.cwd(), "data", "images");
-}
 
 // GET - serve an image file by filename
 export async function GET(

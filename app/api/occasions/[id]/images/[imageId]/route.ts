@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getImagesDir } from "@/lib/paths";
 import { unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
-
-function getImagesDir() {
-  return path.join(process.cwd(), "data", "images");
-}
 
 // DELETE - remove an image
 export async function DELETE(

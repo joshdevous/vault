@@ -1,11 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const { spawn } = require("child_process");
 
 let mainWindow;
-let nextServer;
+let server;
 
-const isDev = process.env.NODE_ENV === "development";
+const isDev = !app.isPackaged;
 const PORT = 3000;
 
 function createWindow() {
@@ -56,45 +55,30 @@ function createWindow() {
       });
   };
 
-  if (isDev) {
-    checkServer();
-    mainWindow.webContents.openDevTools();
-  } else {
-    checkServer();
-  }
+  checkServer();
+
+  // Open DevTools for debugging (remove in final release)
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
-function startNextServer() {
+async function startNextServer() {
   if (isDev) {
-    // In dev mode, assume Next.js dev server is already running
-    return Promise.resolve();
+    // In dev mode, assume Next.js dev server is already running externally
+    console.log("Development mode - expecting external Next.js server");
+    return;
   }
 
-  return new Promise((resolve) => {
-    nextServer = spawn("npm", ["run", "start"], {
-      cwd: path.join(__dirname, ".."),
-      shell: true,
-      env: { ...process.env, PORT: PORT.toString() },
-    });
-
-    nextServer.stdout.on("data", (data) => {
-      console.log(`Next.js: ${data}`);
-      if (data.toString().includes("Ready")) {
-        resolve();
-      }
-    });
-
-    nextServer.stderr.on("data", (data) => {
-      console.error(`Next.js Error: ${data}`);
-    });
-
-    // Fallback resolve after 5 seconds
-    setTimeout(resolve, 5000);
-  });
+  // In production, start the embedded server
+  console.log("Starting production Next.js server...");
+  process.env.NODE_ENV = "production";
+  process.env.PORT = PORT.toString();
+  
+  const { startServer } = require("./server.js");
+  server = await startServer();
 }
 
 app.whenReady().then(async () => {
@@ -109,8 +93,8 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  if (nextServer) {
-    nextServer.kill();
+  if (server) {
+    server.close();
   }
   if (process.platform !== "darwin") {
     app.quit();
@@ -118,7 +102,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  if (nextServer) {
-    nextServer.kill();
+  if (server) {
+    server.close();
   }
 });

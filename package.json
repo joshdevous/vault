@@ -34,12 +34,14 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^8.2.2",
     "electron": "^29.0.0",
     "electron-builder": "^24.9.1",
+    "electron-packager": "^17.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
@@ -56,19 +58,37 @@
       "electron/**/*",
       ".next/**/*",
       "public/**/*",
+      "node_modules/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "prisma",
+        "to": "prisma"
+      },
+      {
+        "from": "data",
+        "to": "data",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": false,
     "win": {
-      "target": "nsis",
-      "icon": "public/icon.ico"
+      "target": [
+        "dir"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "mac": {
-      "target": "dmg",
-      "icon": "public/icon.icns"
+      "target": "dmg"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "public/icon.png"
+      "target": "AppImage"
     }
   },
   "ignoreScripts": [

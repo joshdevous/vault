@@ -1,26 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+import { getImagesDir } from "@/lib/paths";
+import { writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
-
-// Get the images directory path
-function getImagesDir() {
-  // Store in project root/data/images for now
-  // In production Electron, this would be in app.getPath('userData')
-  const imagesDir = path.join(process.cwd(), "data", "images");
-  return imagesDir;
-}
-
-// Ensure images directory exists
-async function ensureImagesDir() {
-  const imagesDir = getImagesDir();
-  if (!existsSync(imagesDir)) {
-    await mkdir(imagesDir, { recursive: true });
-  }
-  return imagesDir;
-}
 
 // GET - list all images for an occasion
 export async function GET(
@@ -62,8 +45,8 @@ export async function POST(
       return NextResponse.json({ error: "Occasion not found" }, { status: 404 });
     }
     
-    // Ensure images directory exists
-    const imagesDir = await ensureImagesDir();
+    // Get the images directory (creates if needed)
+    const imagesDir = getImagesDir();
     
     // Get current max order
     const maxOrder = await prisma.occasionImage.aggregate({
