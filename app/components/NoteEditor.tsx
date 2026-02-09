@@ -247,6 +247,12 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
             type="text"
             value={title}
             onChange={handleTitleChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                editor?.commands.focus("start");
+              }
+            }}
             placeholder="Untitled"
             className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none placeholder-[#4a4a4a] mb-4"
           />
