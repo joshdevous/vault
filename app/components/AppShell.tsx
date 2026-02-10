@@ -19,6 +19,7 @@ export function AppShell() {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>("home");
   const [selectedOccasionId, setSelectedOccasionId] = useState<string | null>(null);
+  const [selectedArchivedNoteId, setSelectedArchivedNoteId] = useState<string | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -262,6 +263,7 @@ export function AppShell() {
   // Open archive view
   const handleOpenArchive = () => {
     setSelectedNoteId(null);
+    setSelectedArchivedNoteId(null);
     setCurrentView("archive");
   };
 
@@ -585,13 +587,16 @@ export function AppShell() {
         ) : currentView === "archive" ? (
           <ArchiveView
             notes={notes}
+            selectedNoteId={selectedArchivedNoteId}
+            onSelectNote={setSelectedArchivedNoteId}
+            onUpdateNote={handleUpdateNote}
             onRestoreNote={handleRestoreNote}
             onDeletePermanently={handleDeletePermanently}
           />
         ) : (
           <div className="flex flex-col h-full">
             {/* Top bar */}
-            <div className="flex items-center h-11 px-3 border-b border-[#2f2f2f] shrink-0">
+            <div className="flex items-center h-11 px-4 border-b border-[#2f2f2f] shrink-0">
               <div className="flex items-center gap-2 text-sm text-[#9b9b9b]">
                 <span className="hover:bg-[#2f2f2f] px-1.5 py-0.5 rounded cursor-pointer">Home</span>
               </div>
