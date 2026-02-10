@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // GET all notes (returns flat list, client builds tree)
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const includeArchived = searchParams.get("includeArchived") === "true";
+    
     const notes = await prisma.note.findMany({
-      where: { archived: false },
+      where: includeArchived ? {} : { archived: false },
       orderBy: { order: "asc" },
     });
     return NextResponse.json(notes);
