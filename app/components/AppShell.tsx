@@ -182,8 +182,30 @@ export function AppShell() {
     }
   };
 
-  // Archive note (hide without deleting)
+  // Archive note (hide without deleting) - if note is empty, delete instead
   const handleArchiveNote = async (id: string) => {
+    const note = notes.find((n) => n.id === id);
+    const isEmpty = note && 
+      (note.title === "Untitled" || note.title === "") && 
+      (note.content === "" || note.content === "<p></p>");
+    
+    if (isEmpty) {
+      // Delete empty notes instead of archiving
+      try {
+        const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          setNotes((prev) => prev.filter((n) => n.id !== id));
+          if (selectedNoteId === id) {
+            setSelectedNoteId(null);
+            setCurrentView("home");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to delete empty note:", error);
+      }
+      return;
+    }
+
     try {
       const res = await fetch(`/api/notes/${id}`, {
         method: "PATCH",
@@ -565,7 +587,6 @@ export function AppShell() {
             notes={notes}
             onRestoreNote={handleRestoreNote}
             onDeletePermanently={handleDeletePermanently}
-            onGoBack={() => setCurrentView("home")}
           />
         ) : (
           <div className="flex flex-col h-full">

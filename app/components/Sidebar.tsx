@@ -320,6 +320,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [createMenu, setCreateMenu] = useState<CreateMenuState | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Drag and drop state
   const [dragState, setDragState] = useState<DragState>({
@@ -705,7 +706,10 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <span>Archive</span>
         </button>
         <button
+          disabled={isExporting}
           onClick={async () => {
+            if (isExporting) return;
+            setIsExporting(true);
             try {
               const response = await fetch("/api/export");
               if (!response.ok) throw new Error("Export failed");
@@ -721,14 +725,16 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             } catch (error) {
               console.error("Export failed:", error);
               alert("Failed to export data");
+            } finally {
+              setIsExporting(false);
             }
           }}
-          className="w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          className={`w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] rounded text-sm ${isExporting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#2f2f2f] cursor-pointer'}`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          <span>Export</span>
+          <span>{isExporting ? "Exporting..." : "Export"}</span>
         </button>
         <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
