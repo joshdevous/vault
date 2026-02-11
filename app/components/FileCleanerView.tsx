@@ -352,8 +352,8 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="w-16 h-16 rounded-full bg-[#2f2f2f] hover:bg-red-500/20 border-2 border-[#4f4f4f] hover:border-red-500 text-[#9b9b9b] hover:text-red-400 transition-all flex items-center justify-center disabled:opacity-50"
-                title="Delete (← or D)"
+                className="w-16 h-16 rounded-full bg-[#2f2f2f] hover:bg-red-500/20 border-2 border-[#4f4f4f] hover:border-red-500 text-[#9b9b9b] hover:text-red-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                title="Delete (←)"
               >
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -364,8 +364,8 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
               <button
                 onClick={handleKeep}
                 disabled={isDeleting}
-                className="w-16 h-16 rounded-full bg-[#2f2f2f] hover:bg-green-500/20 border-2 border-[#4f4f4f] hover:border-green-500 text-[#9b9b9b] hover:text-green-400 transition-all flex items-center justify-center disabled:opacity-50"
-                title="Keep (→ or K)"
+                className="w-16 h-16 rounded-full bg-[#2f2f2f] hover:bg-green-500/20 border-2 border-[#4f4f4f] hover:border-green-500 text-[#9b9b9b] hover:text-green-400 transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                title="Keep (→)"
               >
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
