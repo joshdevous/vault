@@ -128,9 +128,9 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isComplete || !currentFile) return;
       
-      if (e.key === "ArrowLeft" || e.key === "d" || e.key === "D") {
+      if (e.key === "ArrowLeft") {
         handleDelete();
-      } else if (e.key === "ArrowRight" || e.key === "k" || e.key === "K") {
+      } else if (e.key === "ArrowRight") {
         handleKeep();
       }
     };
