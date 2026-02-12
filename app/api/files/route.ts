@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         const audioExts = [".mp3", ".wav", ".ogg", ".m4a", ".flac"];
         const textExts = [".txt", ".md", ".json", ".js", ".ts", ".tsx", ".jsx", ".css", ".html", ".xml", ".yaml", ".yml", ".log", ".csv"];
         const pdfExts = [".pdf"];
+        const archiveExts = [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"];
         
         let type = "unknown";
         if (imageExts.includes(ext)) type = "image";
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
         else if (audioExts.includes(ext)) type = "audio";
         else if (textExts.includes(ext)) type = "text";
         else if (pdfExts.includes(ext)) type = "pdf";
+        else if (archiveExts.includes(ext)) type = "archive";
         
         return {
           name: entry.name,

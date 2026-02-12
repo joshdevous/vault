@@ -16,7 +16,7 @@ interface FileInfo {
   path: string;
   size: number;
   modified: string;
-  type: "image" | "video" | "audio" | "text" | "pdf" | "unknown";
+  type: "image" | "video" | "audio" | "text" | "pdf" | "archive" | "unknown";
   ext: string;
 }
 
@@ -367,13 +367,55 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
 
               {/* File info */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#252525] via-[#252525] to-transparent px-4 py-3">
-                <h3 className="font-medium text-[#e3e3e3] truncate">{currentFile.name}</h3>
-                <div className="flex items-center gap-3 text-xs text-[#6b6b6b] mt-1">
-                  <span>{formatFileSize(currentFile.size)}</span>
-                  <span>•</span>
-                  <span>{currentFile.type}</span>
-                  <span>•</span>
-                  <span>{new Date(currentFile.modified).toLocaleDateString()}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0 pr-4">
+                    <h3 className="font-medium text-[#e3e3e3] truncate">{currentFile.name}</h3>
+                    <div className="flex items-center gap-3 text-xs text-[#6b6b6b] mt-1">
+                      <span>{formatFileSize(currentFile.size)}</span>
+                      <span>•</span>
+                      <span>{new Date(currentFile.modified).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  {/* File type icon */}
+                  <div className="w-12 h-12 flex items-center justify-center text-[#6b6b6b]">
+                    {currentFile.type === "image" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                    {currentFile.type === "video" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                    {currentFile.type === "audio" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                      </svg>
+                    )}
+                    {currentFile.type === "text" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                    {currentFile.type === "pdf" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        <text x="7" y="16" fontSize="6" fill="currentColor" fontWeight="bold">PDF</text>
+                      </svg>
+                    )}
+                    {currentFile.type === "archive" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 12h4" />
+                      </svg>
+                    )}
+                    {currentFile.type === "unknown" && (
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
