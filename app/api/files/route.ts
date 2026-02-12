@@ -100,3 +100,42 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
   }
 }
+
+// Rename a file
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { oldPath, newName } = body;
+
+    if (!oldPath || !newName) {
+      return NextResponse.json({ error: "oldPath and newName are required" }, { status: 400 });
+    }
+
+    const normalizedOldPath = path.normalize(oldPath);
+    
+    if (!fs.existsSync(normalizedOldPath)) {
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
+    }
+
+    const stat = fs.statSync(normalizedOldPath);
+    if (!stat.isFile()) {
+      return NextResponse.json({ error: "Path is not a file" }, { status: 400 });
+    }
+
+    // Build new path with new name in same directory
+    const dir = path.dirname(normalizedOldPath);
+    const newPath = path.join(dir, newName);
+
+    // Check if new path already exists
+    if (fs.existsSync(newPath)) {
+      return NextResponse.json({ error: "A file with that name already exists" }, { status: 409 });
+    }
+
+    fs.renameSync(normalizedOldPath, newPath);
+    
+    return NextResponse.json({ success: true, oldPath: normalizedOldPath, newPath, newName });
+  } catch (error) {
+    console.error("Error renaming file:", error);
+    return NextResponse.json({ error: "Failed to rename file" }, { status: 500 });
+  }
+}

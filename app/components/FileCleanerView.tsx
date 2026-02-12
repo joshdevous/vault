@@ -44,7 +44,10 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
   const [keptCount, setKeptCount] = useState(0);
   const [deletedCount, setDeletedCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
   const cardRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const currentFile = files[currentIndex];
   const isComplete = currentIndex >= files.length && files.length > 0;
@@ -146,21 +149,61 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
     }, 300);
   }, [currentFile, isDeleting]);
 
+  // Handle rename
+  const handleStartRename = useCallback(() => {
+    if (!currentFile) return;
+    setRenameValue(currentFile.name);
+    setIsRenaming(true);
+    setTimeout(() => renameInputRef.current?.focus(), 0);
+  }, [currentFile]);
+
+  const handleConfirmRename = async () => {
+    if (!currentFile || !renameValue.trim() || renameValue === currentFile.name) {
+      setIsRenaming(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/files", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldPath: currentFile.path, newName: renameValue.trim() }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Update the file in our list
+        setFiles(prev => prev.map((f, i) => 
+          i === currentIndex 
+            ? { ...f, name: data.newName, path: data.newPath }
+            : f
+        ));
+      }
+    } catch (err) {
+      console.error("Failed to rename file:", err);
+    }
+
+    setIsRenaming(false);
+  };
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isComplete || !currentFile) return;
+      if (isRenaming) return; // Don't handle shortcuts while renaming
       
       if (e.key === "ArrowLeft") {
         handleDelete();
       } else if (e.key === "ArrowRight") {
         handleKeep();
+      } else if (e.key === "r" || e.key === "R") {
+        handleStartRename();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeep, handleDelete, isComplete, currentFile]);
+  }, [handleKeep, handleDelete, handleStartRename, isComplete, currentFile, isRenaming]);
 
   // Render file preview
   const renderPreview = () => {
@@ -372,7 +415,22 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#252525] via-[#252525] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="font-medium text-[#e3e3e3] truncate">{currentFile.name}</h3>
+                    {isRenaming ? (
+                      <input
+                        ref={renameInputRef}
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleConfirmRename();
+                          if (e.key === "Escape") setIsRenaming(false);
+                        }}
+                        onBlur={handleConfirmRename}
+                        className="w-full font-medium text-[#e3e3e3] bg-[#1a1a1a] border border-[#4f4f4f] rounded px-2 py-1 outline-none focus:border-[#6b6b6b]"
+                      />
+                    ) : (
+                      <h3 className="font-medium text-[#e3e3e3] truncate">{currentFile.name}</h3>
+                    )}
                     <div className="flex items-center gap-3 text-xs text-[#6b6b6b] mt-1">
                       <span>{formatFileSize(currentFile.size)}</span>
                       <span>•</span>
@@ -422,7 +480,7 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
 
             {/* Keyboard hints */}
             <p className="text-xs text-[#6b6b6b] mt-4">
-              Use <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">←</kbd> to delete, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">→</kbd> to keep
+              <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">←</kbd> delete, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">→</kbd> keep, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">R</kbd> rename
             </p>
 
             {/* Stats */}
