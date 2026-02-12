@@ -55,6 +55,8 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
   const [canUndo, setCanUndo] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const lastVolumeRef = useRef<number>(1);
 
   const currentFile = files[currentIndex];
   const isComplete = currentIndex >= files.length && files.length > 0;
@@ -371,14 +373,23 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
       case "video":
         return (
           <video
+            ref={videoRef}
             key={currentFile.path}
             src={previewUrl}
             controls
             autoPlay
-            muted
             className="max-w-full max-h-full rounded-lg"
             style={{ pointerEvents: "auto" }}
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onLoadedData={(e) => {
+              // Restore volume from last video
+              e.currentTarget.volume = lastVolumeRef.current;
+            }}
+            onVolumeChange={(e) => {
+              // Save volume for next video
+              lastVolumeRef.current = e.currentTarget.volume;
+            }}
           />
         );
       
