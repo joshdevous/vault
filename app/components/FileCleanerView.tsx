@@ -406,13 +406,16 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
                     )}
                     {currentFile.type === "archive" && (
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 12h4" />
+                        <rect x="4" y="4" width="16" height="16" rx="2" strokeWidth={1.5} />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 4v16M14 4v16" />
+                        <rect x="10" y="8" width="4" height="3" strokeWidth={1} />
+                        <rect x="10" y="13" width="4" height="3" strokeWidth={1} />
                       </svg>
                     )}
                     {currentFile.type === "unknown" && (
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <circle cx="12" cy="9" r="1" fill="currentColor" />
                       </svg>
                     )}
                   </div>
