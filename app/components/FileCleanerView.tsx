@@ -454,10 +454,24 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
                     )}
                     <div className="flex items-center gap-2 text-xs text-[#6b6b6b] mt-1 flex-wrap">
                       <span>{formatFileSize(currentFile.size)}</span>
-                      <span>•</span>
-                      <span>Created {new Date(currentFile.created).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      <span>•</span>
-                      <span>Updated {new Date(currentFile.modified).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      {(() => {
+                        const created = new Date(currentFile.created);
+                        const modified = new Date(currentFile.modified);
+                        const formatDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                        const isValidDate = (d: Date) => !isNaN(d.getTime()) && d.getTime() > 0;
+                        const isSameDay = isValidDate(created) && isValidDate(modified) && 
+                          created.toDateString() === modified.toDateString();
+                        
+                        if (isSameDay) {
+                          return <><span>•</span><span>{formatDate(modified)}</span></>;
+                        }
+                        return (
+                          <>
+                            {isValidDate(created) && <><span>•</span><span>Created {formatDate(created)}</span></>}
+                            {isValidDate(modified) && <><span>•</span><span>Modified {formatDate(modified)}</span></>}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                   {/* File type icon */}

@@ -49,11 +49,16 @@ export async function GET(request: NextRequest) {
         else if (pdfExts.includes(ext)) type = "pdf";
         else if (archiveExts.includes(ext)) type = "archive";
         
+        // birthtime may not be available on all systems, fall back to mtime
+        const createdTime = stats.birthtime && stats.birthtime.getTime() > 0 
+          ? stats.birthtime 
+          : stats.mtime;
+        
         return {
           name: entry.name,
           path: filePath,
           size: stats.size,
-          created: stats.birthtime.toISOString(),
+          created: createdTime.toISOString(),
           modified: stats.mtime.toISOString(),
           type,
           ext,
