@@ -82,7 +82,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // For binary files, return the file directly
+    // For video/audio, support Range requests for seeking
+    const videoExts = [".mp4", ".webm", ".mov", ".avi", ".mkv"];
+    const audioExts = [".mp3", ".wav", ".ogg", ".m4a", ".flac"];
+    
+    if (videoExts.includes(ext) || audioExts.includes(ext)) {
+      const range = request.headers.get("range");
+      const fileSize = stat.size;
+      
+      if (range) {
+        // Parse range header
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+        
+        // Create read stream for the range
+        const fileHandle = fs.openSync(normalizedPath, "r");
+        const buffer = Buffer.alloc(chunkSize);
+        fs.readSync(fileHandle, buffer, 0, chunkSize, start);
+        fs.closeSync(fileHandle);
+        
+        return new NextResponse(buffer, {
+          status: 206,
+          headers: {
+            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": chunkSize.toString(),
+            "Content-Type": contentType,
+          },
+        });
+      } else {
+        // No range requested, return full file with Accept-Ranges header
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        return new NextResponse(fileBuffer, {
+          headers: {
+            "Content-Type": contentType,
+            "Content-Length": fileSize.toString(),
+            "Accept-Ranges": "bytes",
+          },
+        });
+      }
+    }
+
+    // For other binary files, return the file directly
     const fileBuffer = fs.readFileSync(normalizedPath);
     
     return new NextResponse(fileBuffer, {
