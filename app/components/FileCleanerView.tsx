@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Image, Video, Music, FileText, FileType, FileArchive, File } from "lucide-react";
+import { Image, Video, Music, FileText, FileType, FolderArchive, File } from "lucide-react";
 
 // Extend Window interface for Electron API
 declare global {
@@ -384,7 +384,7 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
                     {currentFile.type === "audio" && <Music className="w-10 h-10" strokeWidth={1.5} />}
                     {currentFile.type === "text" && <FileText className="w-10 h-10" strokeWidth={1.5} />}
                     {currentFile.type === "pdf" && <FileType className="w-10 h-10" strokeWidth={1.5} />}
-                    {currentFile.type === "archive" && <FileArchive className="w-10 h-10" strokeWidth={1.5} />}
+                    {currentFile.type === "archive" && <FolderArchive className="w-10 h-10" strokeWidth={1.5} />}
                     {currentFile.type === "unknown" && <File className="w-10 h-10" strokeWidth={1.5} />}
                   </div>
                 </div>
