@@ -16,6 +16,7 @@ interface FileInfo {
   name: string;
   path: string;
   size: number;
+  created: string;
   modified: string;
   type: "image" | "video" | "audio" | "text" | "pdf" | "archive" | "unknown";
   ext: string;
@@ -451,10 +452,12 @@ export function FileCleanerView({ onBack: _onBack }: FileCleanerViewProps) {
                     ) : (
                       <h3 className="font-medium text-[#e3e3e3] truncate">{currentFile.name}</h3>
                     )}
-                    <div className="flex items-center gap-3 text-xs text-[#6b6b6b] mt-1">
+                    <div className="flex items-center gap-2 text-xs text-[#6b6b6b] mt-1 flex-wrap">
                       <span>{formatFileSize(currentFile.size)}</span>
                       <span>•</span>
-                      <span>{new Date(currentFile.modified).toLocaleDateString()}</span>
+                      <span>Created {new Date(currentFile.created).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      <span>•</span>
+                      <span>Updated {new Date(currentFile.modified).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                     </div>
                   </div>
                   {/* File type icon */}

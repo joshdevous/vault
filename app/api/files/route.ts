@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
           name: entry.name,
           path: filePath,
           size: stats.size,
+          created: stats.birthtime.toISOString(),
           modified: stats.mtime.toISOString(),
           type,
           ext,
