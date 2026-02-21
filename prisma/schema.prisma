@@ -66,3 +66,22 @@ model OccasionImage {
   occasion   Occasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 }
+
+// AI Chat Sessions
+model ChatSession {
+  id        String        @id @default(cuid())
+  title     String        @default("New Chat")
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// AI Chat Messages
+model ChatMessage {
+  id        String      @id @default(cuid())
+  role      String      // "user" or "assistant"
+  content   String
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+}

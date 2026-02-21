@@ -60,6 +60,22 @@ function initializeDatabase() {
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (occasionId) REFERENCES Occasion(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS ChatSession (
+      id TEXT PRIMARY KEY,
+      title TEXT DEFAULT 'New Chat',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ChatMessage (
+      id TEXT PRIMARY KEY,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      sessionId TEXT NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sessionId) REFERENCES ChatSession(id) ON DELETE CASCADE
+    );
   `);
   
   db.close();

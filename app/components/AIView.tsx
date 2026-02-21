@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { AISettingsModal } from "./AISettingsModal";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
+  createdAt: Date;
 }
 
 interface ChatSession {
@@ -22,17 +22,10 @@ interface AIViewProps {
   onBack: () => void;
 }
 
-// Storage keys
+// Storage keys (only for API key, not chat history)
 const API_KEY_STORAGE_KEY = "mothership-ai-api-key";
 const AI_PROVIDER_STORAGE_KEY = "mothership-ai-provider";
-const CHAT_SESSIONS_STORAGE_KEY = "mothership-ai-chat-sessions";
 const CURRENT_SESSION_STORAGE_KEY = "mothership-ai-current-session";
-
-// Generate title from first message
-function generateTitle(content: string): string {
-  const cleaned = content.slice(0, 50).trim();
-  return cleaned.length < content.length ? cleaned + "..." : cleaned;
-}
 
 // Format relative time
 function formatRelativeTime(date: Date): string {
@@ -55,6 +48,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
@@ -69,46 +63,44 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const getApiKey = () => localStorage.getItem(API_KEY_STORAGE_KEY) || "";
   const getProvider = () => localStorage.getItem(AI_PROVIDER_STORAGE_KEY) as "openai" | "anthropic" || "openai";
 
-  // Load sessions from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(CHAT_SESSIONS_STORAGE_KEY);
-    const savedCurrentId = localStorage.getItem(CURRENT_SESSION_STORAGE_KEY);
-    
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const restored: ChatSession[] = parsed.map((s: ChatSession & { createdAt: string; updatedAt: string; messages: (Message & { timestamp: string })[] }) => ({
-          ...s,
-          createdAt: new Date(s.createdAt),
-          updatedAt: new Date(s.updatedAt),
-          messages: s.messages.map((m) => ({
-            ...m,
-            timestamp: new Date(m.timestamp),
-          })),
-        }));
-        setSessions(restored);
-        
-        if (savedCurrentId && restored.some((s) => s.id === savedCurrentId)) {
-          setCurrentSessionId(savedCurrentId);
-        } else if (restored.length > 0) {
-          setCurrentSessionId(restored[0].id);
-        }
-      } catch {
-        // Invalid data, ignore
+  // Load sessions from database
+  const loadSessions = useCallback(async () => {
+    try {
+      const response = await fetch("/api/ai/sessions");
+      if (!response.ok) throw new Error("Failed to load sessions");
+      
+      const data = await response.json();
+      const restored: ChatSession[] = data.map((s: ChatSession & { createdAt: string; updatedAt: string; messages: (Message & { createdAt: string })[] }) => ({
+        ...s,
+        createdAt: new Date(s.createdAt),
+        updatedAt: new Date(s.updatedAt),
+        messages: s.messages.map((m) => ({
+          ...m,
+          createdAt: new Date(m.createdAt),
+        })),
+      }));
+      
+      setSessions(restored);
+      
+      // Restore last selected session from localStorage
+      const savedCurrentId = localStorage.getItem(CURRENT_SESSION_STORAGE_KEY);
+      if (savedCurrentId && restored.some((s) => s.id === savedCurrentId)) {
+        setCurrentSessionId(savedCurrentId);
+      } else if (restored.length > 0) {
+        setCurrentSessionId(restored[0].id);
       }
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+    } finally {
+      setIsLoadingSessions(false);
     }
   }, []);
 
-  // Save sessions whenever they change
   useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
-    } else {
-      localStorage.removeItem(CHAT_SESSIONS_STORAGE_KEY);
-    }
-  }, [sessions]);
+    loadSessions();
+  }, [loadSessions]);
 
-  // Save current session id
+  // Save current session id to localStorage (just for remembering selection)
   useEffect(() => {
     if (currentSessionId) {
       localStorage.setItem(CURRENT_SESSION_STORAGE_KEY, currentSessionId);
@@ -118,45 +110,43 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   }, [currentSessionId]);
 
   // Create new chat session
-  const createNewSession = () => {
-    const newSession: ChatSession = {
-      id: Date.now().toString(),
-      title: "New Chat",
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setSessions((prev) => [newSession, ...prev]);
-    setCurrentSessionId(newSession.id);
-    setError(null);
-  };
-
-  // Delete a session
-  const deleteSession = (id: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    if (currentSessionId === id) {
-      const remaining = sessions.filter((s) => s.id !== id);
-      setCurrentSessionId(remaining.length > 0 ? remaining[0].id : null);
+  const createNewSession = async () => {
+    try {
+      const response = await fetch("/api/ai/sessions", { method: "POST" });
+      if (!response.ok) throw new Error("Failed to create session");
+      
+      const newSession = await response.json();
+      const session: ChatSession = {
+        ...newSession,
+        createdAt: new Date(newSession.createdAt),
+        updatedAt: new Date(newSession.updatedAt),
+        messages: [],
+      };
+      
+      setSessions((prev) => [session, ...prev]);
+      setCurrentSessionId(session.id);
+      setError(null);
+    } catch (err) {
+      setError("Failed to create new chat");
+      console.error(err);
     }
   };
 
-  // Update current session messages
-  const updateCurrentSessionMessages = (newMessages: Message[], sessionId?: string) => {
-    const targetId = sessionId || currentSessionId;
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === targetId
-          ? {
-              ...s,
-              messages: newMessages,
-              updatedAt: new Date(),
-              title: newMessages.length > 0 && s.title === "New Chat"
-                ? generateTitle(newMessages[0].content)
-                : s.title,
-            }
-          : s
-      )
-    );
+  // Delete a session
+  const deleteSession = async (id: string) => {
+    try {
+      const response = await fetch(`/api/ai/sessions/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete session");
+      
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (currentSessionId === id) {
+        const remaining = sessions.filter((s) => s.id !== id);
+        setCurrentSessionId(remaining.length > 0 ? remaining[0].id : null);
+      }
+    } catch (err) {
+      setError("Failed to delete chat");
+      console.error(err);
+    }
   };
 
   // Auto-scroll to bottom when new messages arrive
@@ -188,30 +178,33 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
       return;
     }
 
-    // Create session if none exists
     let targetSessionId = currentSessionId;
+
+    // Create session if none exists
     if (!targetSessionId) {
-      const newSession: ChatSession = {
-        id: Date.now().toString(),
-        title: "New Chat",
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setSessions((prev) => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-      targetSessionId = newSession.id;
+      try {
+        const response = await fetch("/api/ai/sessions", { method: "POST" });
+        if (!response.ok) throw new Error("Failed to create session");
+        
+        const newSession = await response.json();
+        const session: ChatSession = {
+          ...newSession,
+          createdAt: new Date(newSession.createdAt),
+          updatedAt: new Date(newSession.updatedAt),
+          messages: [],
+        };
+        
+        setSessions((prev) => [session, ...prev]);
+        setCurrentSessionId(session.id);
+        targetSessionId = session.id;
+      } catch (err) {
+        setError("Failed to create chat session");
+        console.error(err);
+        return;
+      }
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    const newMessages = [...messages, userMessage];
-    updateCurrentSessionMessages(newMessages, targetSessionId);
+    const userContent = input.trim();
     setInput("");
     setIsLoading(true);
     setError(null);
@@ -222,13 +215,39 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
     }
 
     try {
-      // Build messages array for API
-      const apiMessages = newMessages.map((m) => ({
+      // Add user message to database
+      const userMsgResponse = await fetch(`/api/ai/sessions/${targetSessionId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "user", content: userContent }),
+      });
+      
+      if (!userMsgResponse.ok) throw new Error("Failed to save message");
+      const userMessage = await userMsgResponse.json();
+
+      // Update local state with user message
+      const userMsg: Message = {
+        ...userMessage,
+        createdAt: new Date(userMessage.createdAt),
+      };
+      
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === targetSessionId
+            ? { ...s, messages: [...s.messages, userMsg], updatedAt: new Date() }
+            : s
+        )
+      );
+
+      // Build messages array for AI API
+      const currentMessages = [...messages, userMsg];
+      const apiMessages = currentMessages.map((m) => ({
         role: m.role,
         content: m.content,
       }));
 
-      const response = await fetch("/api/ai/chat", {
+      // Call AI API
+      const aiResponse = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,19 +257,38 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         }),
       });
 
-      const data = await response.json();
+      const aiData = await aiResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || data.error || "Failed to get response");
+      if (!aiResponse.ok) {
+        throw new Error(aiData.message || aiData.error || "Failed to get response");
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.message,
-        timestamp: new Date(),
+      // Add assistant message to database
+      const assistantMsgResponse = await fetch(`/api/ai/sessions/${targetSessionId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "assistant", content: aiData.message }),
+      });
+      
+      if (!assistantMsgResponse.ok) throw new Error("Failed to save assistant message");
+      const assistantMessage = await assistantMsgResponse.json();
+
+      // Update local state with assistant message
+      const assistantMsg: Message = {
+        ...assistantMessage,
+        createdAt: new Date(assistantMessage.createdAt),
       };
-      updateCurrentSessionMessages([...newMessages, assistantMessage], targetSessionId);
+      
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === targetSessionId
+            ? { ...s, messages: [...s.messages, assistantMsg], updatedAt: new Date() }
+            : s
+        )
+      );
+
+      // Reload sessions to get updated title if needed
+      loadSessions();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get AI response");
     } finally {
@@ -286,7 +324,11 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
           
           {/* Session list */}
           <div className="flex-1 overflow-auto py-2">
-            {sessions.length === 0 ? (
+            {isLoadingSessions ? (
+              <div className="px-3 py-4 text-center text-xs text-[#6b6b6b]">
+                Loading...
+              </div>
+            ) : sessions.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-[#6b6b6b]">
                 No conversations yet
               </div>
@@ -301,9 +343,8 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                       : "text-[#9b9b9b] hover:bg-[#2f2f2f]"
                   }`}
                 >
-                  <span className="text-sm truncate">{session.title}</span>
+                  <span className="text-sm truncate flex-1">{session.title}</span>
                   {/* <span className="text-xs text-[#6b6b6b] shrink-0">{formatRelativeTime(session.updatedAt)}</span> */}
-                  <span className="flex-1" />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -404,7 +445,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                     <p className="text-xs text-[#6b6b6b] mt-1">
-                      {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {message.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                 </div>
@@ -458,3 +499,6 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
     </div>
   );
 }
+
+// Keep formatRelativeTime available for future use
+void formatRelativeTime;
