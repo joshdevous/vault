@@ -93,6 +93,10 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
               onChange={(e) => setApiKey(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={provider === "openai" ? "sk-..." : "sk-ant-..."}
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
+              data-form-type="other"
               className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
             />
           </div>
