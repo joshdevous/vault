@@ -17,6 +17,7 @@ interface AIViewProps {
 // Storage keys
 const API_KEY_STORAGE_KEY = "mothership-ai-api-key";
 const AI_PROVIDER_STORAGE_KEY = "mothership-ai-provider";
+const CHAT_HISTORY_STORAGE_KEY = "mothership-ai-chat-history";
 
 export function AIView({ onBack: _onBack }: AIViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,6 +31,37 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   // Get API key from localStorage
   const getApiKey = () => localStorage.getItem(API_KEY_STORAGE_KEY) || "";
   const getProvider = () => localStorage.getItem(AI_PROVIDER_STORAGE_KEY) as "openai" | "anthropic" || "openai";
+
+  // Load chat history on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Convert timestamp strings back to Date objects
+        const restored = parsed.map((m: Message & { timestamp: string }) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages(restored);
+      } catch {
+        // Invalid data, ignore
+      }
+    }
+  }, []);
+
+  // Save chat history whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // Clear chat and history
+  const clearChat = () => {
+    setMessages([]);
+    localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -140,7 +172,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
             Settings
           </button>
           <button
-            onClick={() => setMessages([])}
+            onClick={clearChat}
             disabled={messages.length === 0}
             className="text-xs text-[#6b6b6b] hover:text-[#9b9b9b] disabled:opacity-50 disabled:cursor-not-allowed"
           >
