@@ -30,6 +30,7 @@ interface SidebarProps {
   onOpenArchive: () => void;
   onOpenFileCleaner: () => void;
   onOpenAI: () => void;
+  onOpenSearch: () => void;
   notes: Note[];
 }
 
@@ -315,7 +316,7 @@ interface CreateMenuState {
   y: number;
 }
 
-export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onMoveNote, onGoHome, onOpenVault, onOpenVaultAddModal, onOpenMemories, onOpenMemoryAddModal, onOpenArchive, onOpenFileCleaner, onOpenAI, notes }: SidebarProps) {
+export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onMoveNote, onGoHome, onOpenVault, onOpenVaultAddModal, onOpenMemories, onOpenMemoryAddModal, onOpenArchive, onOpenFileCleaner, onOpenAI, onOpenSearch, notes }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
     vault: true,
@@ -522,7 +523,10 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
       {/* Search and quick actions */}
       <div className="px-2 py-1">
-        <div className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm">
+        <div 
+          className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          onClick={onOpenSearch}
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>

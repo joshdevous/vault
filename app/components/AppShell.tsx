@@ -10,6 +10,7 @@ import { MemoryAddModal } from "./MemoryAddModal";
 import { ArchiveView } from "./ArchiveView";
 import { FileCleanerView } from "./FileCleanerView";
 import { AIView } from "./AIView";
+import { SearchModal } from "./SearchModal";
 import { Note, VaultItem, Occasion } from "@/types/models";
 
 type ViewType = "home" | "note" | "vault" | "memories" | "archive" | "fileCleaner" | "ai";
@@ -23,6 +24,7 @@ export function AppShell() {
   const [selectedOccasionId, setSelectedOccasionId] = useState<string | null>(null);
   const [selectedArchivedNoteId, setSelectedArchivedNoteId] = useState<string | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
@@ -279,6 +281,11 @@ export function AppShell() {
   const handleOpenAI = () => {
     setSelectedNoteId(null);
     setCurrentView("ai");
+  };
+
+  // Open search modal
+  const handleOpenSearch = () => {
+    setIsSearchModalOpen(true);
   };
 
   // Rename note (optimistic update)
@@ -568,6 +575,7 @@ export function AppShell() {
         onOpenArchive={handleOpenArchive}
         onOpenFileCleaner={handleOpenFileCleaner}
         onOpenAI={handleOpenAI}
+        onOpenSearch={handleOpenSearch}
         onGoHome={() => { setSelectedNoteId(null); setCurrentView("home"); }}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">
@@ -660,6 +668,25 @@ export function AppShell() {
         occasions={occasions}
         onCreateOccasionAndMemory={handleCreateOccasionAndMemory}
         onCreateMemory={handleCreateMemory}
+      />
+
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectNote={(id) => {
+          setIsSearchModalOpen(false);
+          setSelectedNoteId(id);
+          setCurrentView("note");
+        }}
+        onSelectVault={() => {
+          setIsSearchModalOpen(false);
+          setCurrentView("vault");
+        }}
+        onSelectMemories={() => {
+          setIsSearchModalOpen(false);
+          setCurrentView("memories");
+        }}
       />
     </div>
   );
