@@ -528,6 +528,15 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           </svg>
           <span>Search</span>
         </div>
+        <div
+          className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          onClick={onOpenAI}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+          <span>AI Chat</span>
+        </div>
         <div 
           className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           onClick={(e) => {
@@ -704,15 +713,6 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
       {/* Bottom section */}
       <div className="px-2 pt-1 pb-2">
-        <button
-          onClick={onOpenAI}
-          className="w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-          <span>AI Chat</span>
-        </button>
         <button
           onClick={onOpenFileCleaner}
           className="w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
