@@ -1,172 +1,40 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import Typo from "typo-js";
 
-// Common typos and corrections
-const CORRECTIONS: Record<string, string> = {
-  // Common typos
-  teh: "the",
-  hte: "the",
-  thier: "their",
-  recieve: "receive",
-  reciept: "receipt",
-  occured: "occurred",
-  occuring: "occurring",
-  untill: "until",
-  wierd: "weird",
-  beleive: "believe",
-  belive: "believe",
-  definately: "definitely",
-  definatly: "definitely",
-  seperate: "separate",
-  seperately: "separately",
-  occassion: "occasion",
-  occassionally: "occasionally",
-  accomodate: "accommodate",
-  acheive: "achieve",
-  accross: "across",
-  agressive: "aggressive",
-  apparantly: "apparently",
-  arguement: "argument",
-  begining: "beginning",
-  calender: "calendar",
-  carribean: "Caribbean",
-  cemetary: "cemetery",
-  collegue: "colleague",
-  comming: "coming",
-  commited: "committed",
-  concious: "conscious",
-  curiousity: "curiosity",
-  dissapear: "disappear",
-  dissapoint: "disappoint",
-  embarass: "embarrass",
-  enviroment: "environment",
-  existance: "existence",
-  fourty: "forty",
-  freind: "friend",
-  goverment: "government",
-  gaurd: "guard",
-  happend: "happened",
-  harrass: "harass",
-  immediatly: "immediately",
-  independant: "independent",
-  knowlege: "knowledge",
-  liason: "liaison",
-  libary: "library",
-  maintainance: "maintenance",
-  millenium: "millennium",
-  misspell: "misspell",
-  neccessary: "necessary",
-  noticable: "noticeable",
-  occurance: "occurrence",
-  paralel: "parallel",
-  perseverance: "perseverance",
-  posession: "possession",
-  preceeding: "preceding",
-  priviledge: "privilege",
-  pronounciation: "pronunciation",
-  publically: "publicly",
-  questionaire: "questionnaire",
-  recomend: "recommend",
-  refered: "referred",
-  religous: "religious",
-  remeber: "remember",
-  resistence: "resistance",
-  seige: "siege",
-  succesful: "successful",
-  suprise: "surprise",
-  tommorow: "tomorrow",
-  tomorro: "tomorrow",
-  tounge: "tongue",
-  truely: "truly",
-  unforseen: "unforeseen",
-  unfortunatly: "unfortunately",
-  vaccuum: "vacuum",
-  wether: "whether",
-  writting: "writing",
+let dictionary: Typo | null = null;
+let dictionaryLoading = false;
 
-  // Contractions
-  dont: "don't",
-  doesnt: "doesn't",
-  didnt: "didn't",
-  wont: "won't",
-  cant: "can't",
-  couldnt: "couldn't",
-  wouldnt: "wouldn't",
-  shouldnt: "shouldn't",
-  hasnt: "hasn't",
-  havent: "haven't",
-  hadnt: "hadn't",
-  isnt: "isn't",
-  arent: "aren't",
-  wasnt: "wasn't",
-  werent: "weren't",
-  ive: "I've",
-  youve: "you've",
-  weve: "we've",
-  theyve: "they've",
-  youre: "you're",
-  theyre: "they're",
-  were: "we're", // Note: context-dependent, might want to remove
-  hes: "he's",
-  shes: "she's",
-  its: "it's", // Note: context-dependent
-  thats: "that's",
-  whats: "what's",
-  whos: "who's",
-  wheres: "where's",
-  heres: "here's",
-  theres: "there's",
-  lets: "let's",
-  ill: "I'll",
-  youll: "you'll",
-  well: "we'll", // Note: context-dependent
-  theyll: "they'll",
-  hed: "he'd",
-  shed: "she'd",
-  youd: "you'd",
-  theyd: "they'd",
-  wed: "we'd",
-  im: "I'm",
+// Load dictionary asynchronously
+async function loadDictionary(): Promise<Typo | null> {
+  if (dictionary) return dictionary;
+  if (dictionaryLoading) return null;
+  
+  dictionaryLoading = true;
+  
+  try {
+    const [affResponse, dicResponse] = await Promise.all([
+      fetch("/dictionaries/en_GB.aff"),
+      fetch("/dictionaries/en_GB.dic"),
+    ]);
+    
+    const [affData, dicData] = await Promise.all([
+      affResponse.text(),
+      dicResponse.text(),
+    ]);
+    
+    dictionary = new Typo("en_GB", affData, dicData);
+    console.log("Dictionary loaded successfully");
+    return dictionary;
+  } catch (error) {
+    console.error("Failed to load dictionary:", error);
+    dictionaryLoading = false;
+    return null;
+  }
+}
 
-  // Common shortcuts
-  bc: "because",
-  b4: "before",
-  ppl: "people",
-  w: "with",
-  wo: "without",
-  abt: "about",
-  rn: "right now",
-  idk: "I don't know",
-  tbh: "to be honest",
-  nvm: "never mind",
-  omw: "on my way",
-  lmk: "let me know",
-  btw: "by the way",
-  fyi: "for your information",
-  asap: "as soon as possible",
-
-  // Capitalization fixes
-  i: "I",
-  monday: "Monday",
-  tuesday: "Tuesday",
-  wednesday: "Wednesday",
-  thursday: "Thursday",
-  friday: "Friday",
-  saturday: "Saturday",
-  sunday: "Sunday",
-  january: "January",
-  february: "February",
-  march: "March",
-  april: "April",
-  may: "May",
-  june: "June",
-  july: "July",
-  august: "August",
-  september: "September",
-  october: "October",
-  november: "November",
-  december: "December",
-};
+// Start loading immediately
+loadDictionary();
 
 export const AutoCorrect = Extension.create({
   name: "autoCorrect",
@@ -177,8 +45,13 @@ export const AutoCorrect = Extension.create({
         key: new PluginKey("autoCorrect"),
         props: {
           handleTextInput(view, from, to, text) {
-            // Only trigger on space, period, comma, etc.
+            // Only trigger on space or punctuation (word completed)
             if (!/[\s.,!?;:\)]/.test(text)) {
+              return false;
+            }
+
+            // Don't do anything if dictionary isn't loaded yet
+            if (!dictionary) {
               return false;
             }
 
@@ -186,28 +59,38 @@ export const AutoCorrect = Extension.create({
             const $from = state.doc.resolve(from);
             const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
             
-            // Find the last word
-            const wordMatch = textBefore.match(/(\S+)$/);
+            // Find the last word (only letters, no numbers/special chars)
+            const wordMatch = textBefore.match(/([a-zA-Z]+)$/);
             if (!wordMatch) {
               return false;
             }
 
             const word = wordMatch[1];
-            const wordLower = word.toLowerCase();
             
-            // Check if we have a correction for this word
-            const correction = CORRECTIONS[wordLower];
-            if (!correction) {
+            // Skip very short words (1-2 chars) - too risky
+            if (word.length < 3) {
+              return false;
+            }
+            
+            // Check if word is spelled correctly
+            if (dictionary.check(word)) {
               return false;
             }
 
-            // Preserve original case pattern if word was all caps
-            let finalCorrection = correction;
-            if (word === word.toUpperCase() && word.length > 1) {
-              finalCorrection = correction.toUpperCase();
+            // Get suggestions
+            const suggestions = dictionary.suggest(word);
+            if (!suggestions || suggestions.length === 0) {
+              return false;
+            }
+
+            // Use the first suggestion (most likely correction)
+            let correction = suggestions[0];
+
+            // Preserve case pattern
+            if (word === word.toUpperCase()) {
+              correction = correction.toUpperCase();
             } else if (word[0] === word[0].toUpperCase()) {
-              // Capitalize first letter if original was capitalized
-              finalCorrection = correction.charAt(0).toUpperCase() + correction.slice(1);
+              correction = correction.charAt(0).toUpperCase() + correction.slice(1);
             }
 
             // Calculate positions
@@ -217,7 +100,7 @@ export const AutoCorrect = Extension.create({
             // Create transaction to replace the word and add the typed character
             const tr = state.tr
               .delete(wordStart, wordEnd)
-              .insertText(finalCorrection + text, wordStart);
+              .insertText(correction + text, wordStart);
 
             view.dispatch(tr);
             return true;
