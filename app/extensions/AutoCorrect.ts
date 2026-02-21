@@ -44,13 +44,13 @@ export const AutoCorrect = Extension.create({
       new Plugin({
         key: new PluginKey("autoCorrect"),
         props: {
-          handleTextInput(view, from, to, text) {
+          handleTextInput(view, from, _to, text) {
             // Only trigger on space or punctuation (word completed)
             if (!/[\s.,!?;:\)]/.test(text)) {
               return false;
             }
 
-            // Don't do anything if dictionary isn't loaded yet
+            // Don't block - if dictionary isn't ready, skip
             if (!dictionary) {
               return false;
             }
@@ -71,39 +71,62 @@ export const AutoCorrect = Extension.create({
             if (word.length < 3) {
               return false;
             }
-            
-            // Check if word is spelled correctly
-            if (dictionary.check(word)) {
-              return false;
-            }
 
-            // Get suggestions
-            const suggestions = dictionary.suggest(word);
-            if (!suggestions || suggestions.length === 0) {
-              return false;
-            }
-
-            // Use the first suggestion (most likely correction)
-            let correction = suggestions[0];
-
-            // Preserve case pattern
-            if (word === word.toUpperCase()) {
-              correction = correction.toUpperCase();
-            } else if (word[0] === word[0].toUpperCase()) {
-              correction = correction.charAt(0).toUpperCase() + correction.slice(1);
-            }
-
-            // Calculate positions
+            // Store info for async correction
             const wordStart = from - word.length;
-            const wordEnd = from;
+            const typedText = text;
+            
+            // Let the input go through immediately - don't block
+            // Then check spelling async
+            setTimeout(() => {
+              if (!dictionary) return;
+              
+              // Check if word is spelled correctly
+              if (dictionary.check(word)) {
+                return;
+              }
 
-            // Create transaction to replace the word and add the typed character
-            const tr = state.tr
-              .delete(wordStart, wordEnd)
-              .insertText(correction + text, wordStart);
+              // Get suggestions
+              const suggestions = dictionary.suggest(word);
+              if (!suggestions || suggestions.length === 0) {
+                return;
+              }
 
-            view.dispatch(tr);
-            return true;
+              // Use the first suggestion
+              let correction = suggestions[0];
+
+              // Preserve case pattern
+              if (word === word.toUpperCase()) {
+                correction = correction.toUpperCase();
+              } else if (word[0] === word[0].toUpperCase()) {
+                correction = correction.charAt(0).toUpperCase() + correction.slice(1);
+              }
+
+              // Get fresh state (may have changed)
+              const currentState = view.state;
+              
+              // Adjust positions since we added the space/punctuation
+              const adjustedStart = wordStart;
+              const adjustedEnd = wordStart + word.length;
+              
+              // Make sure the text is still what we expect
+              const currentText = currentState.doc.textBetween(adjustedStart, adjustedEnd, "");
+              if (currentText !== word) {
+                return; // Text changed, abort
+              }
+
+              // Create transaction to replace the word
+              const tr = currentState.tr.replaceWith(
+                adjustedStart,
+                adjustedEnd,
+                currentState.schema.text(correction)
+              );
+
+              view.dispatch(tr);
+            }, 0);
+
+            // Return false to let default handling proceed (don't block typing)
+            return false;
           },
         },
       }),
