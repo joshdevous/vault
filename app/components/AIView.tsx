@@ -110,7 +110,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   }, [currentSessionId]);
 
   // Create new chat session
-  const createNewSession = async () => {
+  const createNewSession = useCallback(async () => {
     try {
       const response = await fetch("/api/ai/sessions", { method: "POST" });
       if (!response.ok) throw new Error("Failed to create session");
@@ -130,7 +130,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
       setError("Failed to create new chat");
       console.error(err);
     }
-  };
+  }, []);
 
   // Delete a session
   const deleteSession = async (id: string) => {
@@ -303,6 +303,18 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
     }
   };
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        createNewSession();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [createNewSession]);
+
   return (
     <div className="flex h-full">
       {/* Sidebar */}
@@ -468,12 +480,12 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                 className="p-2 rounded-md bg-[#4f4f4f] hover:bg-[#5f5f5f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-4 h-4 text-[#e3e3e3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>
             </div>
             <p className="text-xs text-[#6b6b6b] mt-2 text-center">
-              <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Enter</kbd> send, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Shift+Enter</kbd> new line
+              <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Enter</kbd> send, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Shift+Enter</kbd> new line, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Ctrl+N</kbd> new chat
             </p>
           </div>
         </div>
