@@ -302,7 +302,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                   }`}
                 >
                   <span className="text-sm truncate">{session.title}</span>
-                  <span className="text-xs text-[#6b6b6b] shrink-0">{formatRelativeTime(session.updatedAt)}</span>
+                  {/* <span className="text-xs text-[#6b6b6b] shrink-0">{formatRelativeTime(session.updatedAt)}</span> */}
                   <span className="flex-1" />
                   <button
                     onClick={(e) => {
