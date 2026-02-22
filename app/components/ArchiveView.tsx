@@ -79,7 +79,7 @@ export function ArchiveView({ notes, selectedNoteId, onSelectNote, onUpdateNote,
             {/* Note breadcrumb */}
             <div className="flex items-center gap-1.5 min-w-0">
               <NoteIcon icon={selectedNote.icon} hasContent={selectedNote.content.length > 0 && selectedNote.content !== "<p></p>"} />
-              <span className="truncate">{selectedNote.title || "Untitled"}</span>
+              <span className="truncate">{selectedNote.title || "New page"}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function ArchiveView({ notes, selectedNoteId, onSelectNote, onUpdateNote,
         {/* Note editor area - reuse the content portion */}
         <div className="flex-1 overflow-auto">
           <div className="max-w-3xl mx-auto px-16 py-12">
-            <h1 className="text-4xl font-bold text-[#e3e3e3] mb-4">{selectedNote.title || "Untitled"}</h1>
+            <h1 className="text-4xl font-bold text-[#e3e3e3] mb-4">{selectedNote.title || "New page"}</h1>
             <div 
               className="prose prose-invert max-w-none text-[#e3e3e3] text-base leading-relaxed"
               dangerouslySetInnerHTML={{ __html: selectedNote.content || "<p class='text-[#4a4a4a]'>No content</p>" }}
@@ -148,7 +148,7 @@ export function ArchiveView({ notes, selectedNoteId, onSelectNote, onUpdateNote,
                 >
                   <NoteIcon icon={note.icon} hasContent={note.content.length > 0 && note.content !== "<p></p>"} />
                   <span className="text-[#9b9b9b] text-sm truncate flex-1">
-                    {note.title || "Untitled"}
+                    {note.title || "New page"}
                   </span>
                   
                   {/* Action buttons - same style as sidebar */}

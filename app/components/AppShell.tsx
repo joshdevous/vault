@@ -195,7 +195,7 @@ export function AppShell() {
   const handleArchiveNote = async (id: string) => {
     const note = notes.find((n) => n.id === id);
     const isEmpty = note && 
-      (note.title === "Untitled" || note.title === "") && 
+      (note.title === "" || note.title === "Untitled") && 
       (note.content === "" || note.content === "<p></p>");
     
     if (isEmpty) {

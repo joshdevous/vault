@@ -90,6 +90,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // AI Chat state - local per-render state
   const [chatInput, setChatInput] = useState("");
@@ -135,6 +136,13 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
   useEffect(() => {
     setTitle(note.title);
   }, [note.title]);
+
+  // Auto-focus title input when opening a new/empty note
+  useEffect(() => {
+    if (note.title === "" && note.content === "") {
+      titleInputRef.current?.focus();
+    }
+  }, [note.id, note.title, note.content]);
 
   // Build breadcrumb trail from current note to root
   const breadcrumbs = useMemo(() => {
@@ -347,7 +355,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
           apiKey,
           model: "openai/gpt-4o-mini",
           noteContext: {
-            title: title || "Untitled",
+            title: title || "New page",
             content: noteContent,
           },
         }),
@@ -426,7 +434,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                 {index === breadcrumbs.length - 1 ? (
                   <div className="flex items-center gap-1.5 min-w-0">
                     <NoteIcon icon={crumb.icon} hasContent={crumb.content.length > 0 && crumb.content !== "<p></p>"} />
-                    <span className="truncate">{crumb.id === note.id ? (title || "Untitled") : (crumb.title || "Untitled")}</span>
+                    <span className="truncate">{crumb.id === note.id ? (title || "New page") : (crumb.title || "New page")}</span>
                   </div>
                 ) : (
                   <button
@@ -434,7 +442,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                     className="flex items-center gap-1.5 hover:text-[#e3e3e3] transition-colors min-w-0 cursor-pointer"
                   >
                     <NoteIcon icon={crumb.icon} hasContent={crumb.content.length > 0 && crumb.content !== "<p></p>"} />
-                    <span className="truncate max-w-[120px]">{crumb.title || "Untitled"}</span>
+                    <span className="truncate max-w-[120px]">{crumb.title || "New page"}</span>
                   </button>
                 )}
               </div>
@@ -478,8 +486,9 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                   editor?.chain().focus().setTextSelection(0).run();
                 }
               }}
-              placeholder="Untitled"
-              className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none placeholder-[#4a4a4a] mb-4"
+              ref={titleInputRef}
+              placeholder="New page"
+              className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none placeholder-[#4a4a4a] mb-4 leading-tight"
             />
 
             {/* Sub-pages list */}
@@ -493,7 +502,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                   >
                     <NoteIcon icon={child.icon} hasContent={child.content.length > 0 && child.content !== "<p></p>"} />
                     <span className="text-[#9b9b9b] text-sm truncate">
-                      {child.title || "Untitled"}
+                      {child.title || "New page"}
                     </span>
                   </button>
                 ))}

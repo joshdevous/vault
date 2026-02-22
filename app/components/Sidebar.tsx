@@ -264,7 +264,7 @@ function NoteItem({
                 e.stopPropagation();
                 onStartRename(note.id);
               }}
-            >{hiddenNoteNames.has(note.id) ? obfuscateTitle(note.title || "Untitled") : (note.title || "Untitled")}</span>
+            >{hiddenNoteNames.has(note.id) ? obfuscateTitle(note.title || "New page") : (note.title || "New page")}</span>
           )}
         </div>
 

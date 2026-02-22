@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         results.push({
           type: "note",
           id: note.id,
-          title: note.title || "Untitled",
+          title: note.title || "New page",
           snippet: matchInTitle 
             ? plainContent.slice(0, 150) + (plainContent.length > 150 ? "..." : "")
             : createSnippet(plainContent, query),
