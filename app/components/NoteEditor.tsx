@@ -89,13 +89,23 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // AI Chat state - persisted per note
-  const [showAIChat, setShowAIChat] = useState(false);
+  const [chatOpenStates, setChatOpenStates] = useState<Map<string, boolean>>(new Map());
   const [allChatMessages, setAllChatMessages] = useState<Map<string, ChatMessage[]>>(new Map());
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Get current note's chat open state
+  const showAIChat = chatOpenStates.get(note.id) || false;
+  const setShowAIChat = (open: boolean) => {
+    setChatOpenStates(prev => {
+      const newMap = new Map(prev);
+      newMap.set(note.id, open);
+      return newMap;
+    });
+  };
 
   // Get current note's chat messages
   const chatMessages = allChatMessages.get(note.id) || [];
