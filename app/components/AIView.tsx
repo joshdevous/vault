@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 import { AISettingsModal } from "./AISettingsModal";
 
 interface Message {
@@ -311,6 +312,89 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
     }
   };
 
+  // Regenerate an assistant response
+  const handleRedo = async (messageId: string) => {
+    if (isLoading || !currentSessionId) return;
+
+    const apiKey = getApiKey();
+    const provider = getProvider();
+    if (!apiKey) {
+      setError("Please set your API key in settings.");
+      return;
+    }
+
+    // Find the message index and get messages up to (but not including) this assistant message
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    // Get messages before this one (for context)
+    const messagesBeforeRedo = messages.slice(0, msgIndex);
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Delete the message from DB
+      await fetch(`/api/ai/sessions/${currentSessionId}/messages/${messageId}`, {
+        method: "DELETE",
+      });
+
+      // Update local state - remove this message
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === currentSessionId
+            ? { ...s, messages: messagesBeforeRedo }
+            : s
+        )
+      );
+
+      // Call AI API with the conversation up to this point
+      const apiMessages = messagesBeforeRedo.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const aiResponse = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages, apiKey, provider }),
+      });
+
+      const aiData = await aiResponse.json();
+      if (!aiResponse.ok) {
+        throw new Error(aiData.message || aiData.error || "Failed to get response");
+      }
+
+      // Add new assistant message
+      const assistantMsgResponse = await fetch(`/api/ai/sessions/${currentSessionId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "assistant", content: aiData.message }),
+      });
+
+      if (!assistantMsgResponse.ok) throw new Error("Failed to save message");
+      const assistantMessage = await assistantMsgResponse.json();
+
+      const newMsg: Message = {
+        ...assistantMessage,
+        createdAt: new Date(assistantMessage.createdAt),
+      };
+
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === currentSessionId
+            ? { ...s, messages: [...messagesBeforeRedo, newMsg] }
+            : s
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to regenerate");
+      loadSessions(); // Reload to get correct state
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -428,7 +512,33 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
                   ) : (
-                    <p className="text-[#e3e3e3] whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    <div className="group">
+                      <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#e3a0e3] [&_pre]:bg-[#1a1a1a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+                      <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(message.content)}
+                          className="p-1.5 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+                          title="Copy"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleRedo(message.id)}
+                          className="p-1.5 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+                          title="Regenerate"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 4v6h6"/>
+                            <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
