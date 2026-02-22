@@ -14,7 +14,6 @@ import { Note } from "@/types/models";
 
 // Storage keys
 const OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
-const SELECTED_MODEL_STORAGE_KEY = "mothership-ai-model";
 
 // Strip HTML for plain text
 function stripHtml(html: string): string {
@@ -328,7 +327,6 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
         content: m.content,
       }));
 
-      const selectedModel = localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) || "openai/gpt-4o-mini";
       const noteContent = stripHtml(editor?.getHTML() || note.content);
 
       const response = await fetch("/api/ai/chat", {
@@ -337,7 +335,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
         body: JSON.stringify({
           messages: apiMessages,
           apiKey,
-          model: selectedModel,
+          model: "openai/gpt-4o-mini",
           noteContext: {
             title: title || "Untitled",
             content: noteContent,
