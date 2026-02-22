@@ -296,6 +296,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
     setIsChatLoading(true);
     setChatError(null);
 
+    // Reset textarea height
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = "auto";
+    }
+
     try {
       const apiMessages = [...chatMessages, userMessage].map(m => ({
         role: m.role,
@@ -365,6 +370,13 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
       e.preventDefault();
       handleSendChat();
     }
+  };
+
+  // Auto-resize chat textarea
+  const handleChatInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setChatInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
   };
 
   // Clear chat
@@ -526,10 +538,10 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
               <textarea
                 ref={chatInputRef}
                 value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
+                onChange={handleChatInputChange}
                 onKeyDown={handleChatKeyDown}
                 placeholder="Ask about this note..."
-                className="flex-1 bg-transparent text-[#e3e3e3] placeholder-[#6b6b6b] resize-none outline-none text-sm px-1"
+                className="flex-1 bg-transparent text-[#e3e3e3] placeholder-[#6b6b6b] resize-none outline-none text-sm px-2 py-1"
                 rows={1}
                 style={{ maxHeight: "100px" }}
               />
