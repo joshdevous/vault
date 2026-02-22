@@ -6,7 +6,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { existsSync } from "fs";
 
-// POST - upload a custom icon for a note
+// POST - upload a custom icon for a note (uses base64 JSON for simplicity in local Electron app)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,15 +14,14 @@ export async function POST(
   const { id } = await params;
   
   try {
-    const formData = await request.formData();
-    const file = formData.get("icon") as File | null;
+    const { base64, ext, mimeType } = await request.json();
     
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    if (!base64 || !ext) {
+      return NextResponse.json({ error: "Missing base64 or ext" }, { status: 400 });
     }
     
     // Validate file type
-    if (!file.type.startsWith("image/")) {
+    if (!mimeType || !mimeType.startsWith("image/")) {
       return NextResponse.json({ error: "File must be an image" }, { status: 400 });
     }
     
@@ -36,7 +35,7 @@ export async function POST(
     const iconsDir = getIconsDir();
     
     // If note already has a custom icon, delete the old file
-    if (note.icon.startsWith("icon:")) {
+    if (note.icon && note.icon.startsWith("icon:")) {
       const oldFilename = note.icon.substring(5);
       const oldPath = path.join(iconsDir, oldFilename);
       if (existsSync(oldPath)) {
@@ -44,14 +43,12 @@ export async function POST(
       }
     }
     
-    // Generate unique filename
-    const ext = file.name.split(".").pop() || "png";
+    // Generate unique filename and write file
     const filename = `${randomUUID()}.${ext}`;
     const filepath = path.join(iconsDir, filename);
     
-    // Write file to disk
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Decode base64 and write to disk
+    const buffer = Buffer.from(base64, "base64");
     await writeFile(filepath, buffer);
     
     // Update note with icon reference (prefix with "icon:" to distinguish from emoji)

@@ -71,12 +71,15 @@ export function IconPicker({ currentIcon, noteId, onIconChange, onClose }: IconP
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("icon", file);
+      // Read file as base64 - simpler for local Electron app than multipart
+      const buffer = await file.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      const ext = file.name.split(".").pop() || "png";
 
       const res = await fetch(`/api/notes/${noteId}/icon`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, ext, mimeType: file.type }),
       });
 
       if (res.ok) {
