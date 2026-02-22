@@ -30,7 +30,7 @@ export function TitleBar() {
     <div className="h-8 bg-[#202020] flex items-center justify-between select-none shrink-0"
          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
       {/* App title */}
-      <div className="px-3 text-xs text-[#9b9b9b] font-medium">
+      <div className="px-3 text-xs text-[#7eb8f7] font-medium">
         Mothership
       </div>
       

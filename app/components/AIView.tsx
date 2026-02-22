@@ -497,11 +497,11 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         )}
 
         {/* Messages area */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto">
           {messages.length === 0 ? (
             <div />
           ) : (
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto px-6 py-4 space-y-6">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -513,7 +513,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                     </div>
                   ) : (
                     <div className="group">
-                      <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#e3a0e3] [&_pre]:bg-[#1a1a1a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
+                      <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#1a1a1a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
                         <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
                       <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -555,8 +555,8 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-[#2f2f2f] p-4">
-          <div className="max-w-3xl mx-auto">
+        <div className="border-t border-[#2f2f2f]">
+          <div className="max-w-3xl mx-auto px-4 py-4">
             <div className="flex gap-2 items-end bg-[#252525] rounded-lg border border-[#3f3f3f] p-2">
               <textarea
                 ref={inputRef}

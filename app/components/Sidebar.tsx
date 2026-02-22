@@ -514,10 +514,10 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           className="flex items-center gap-2 px-2 py-1.5 hover:bg-[rgba(255,255,255,0.055)] rounded-[6px] cursor-pointer"
           onClick={onGoHome}
         >
-          <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-medium text-white shrink-0">
+          <div className="w-5 h-5 rounded bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-xs font-medium text-white shrink-0">
             M
           </div>
-          <span className="text-sm font-medium text-[#e3e3e3] truncate">Mothership</span>
+          <span className="text-sm font-medium text-[#7eb8f7] truncate">Mothership</span>
         </div>
       </div>
 
