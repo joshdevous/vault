@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 
 // Set NODE_ENV early to prevent TypeScript installation attempts
@@ -99,6 +99,28 @@ function createWindow() {
   };
 
   checkServer();
+
+  // Open external links in the default browser, not in the app
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // Only open http/https URLs in external browser
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
+
+  // Also handle link clicks that try to navigate the window
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    // Allow navigation to our app's localhost URL
+    if (url.startsWith(`http://localhost:${PORT}`)) {
+      return;
+    }
+    // External URLs should open in browser
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
 
   // Only open DevTools in development
   if (isDev) {
