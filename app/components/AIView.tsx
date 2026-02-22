@@ -90,11 +90,14 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   // Get currently selected model
   const selectedModel = ALL_MODELS.find(m => m.id === selectedModelId) || ALL_MODELS[0];
 
-  // Handle model selection
+  // Handle model selection - switch to a new chat
   const handleSelectModel = (modelId: string) => {
     setSelectedModelId(modelId);
     localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, modelId);
     setShowModelSelector(false);
+    // Start fresh with a new chat
+    setCurrentSessionId(null);
+    localStorage.removeItem(CURRENT_SESSION_STORAGE_KEY);
   };
 
   // Close model selector on click outside
