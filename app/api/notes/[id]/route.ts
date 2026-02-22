@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { deleteImageFileIfUnused, extractImageFilenames } from "@/lib/imageReferences";
 
 // GET single note
 export async function GET(
@@ -31,6 +32,14 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
+    const existingNote = await prisma.note.findUnique({
+      where: { id },
+      select: { content: true },
+    });
+
+    if (!existingNote) {
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    }
     
     const note = await prisma.note.update({
       where: { id },
@@ -43,6 +52,14 @@ export async function PATCH(
         ...(body.archived !== undefined && { archived: body.archived }),
       },
     });
+
+    if (body.content !== undefined) {
+      const before = extractImageFilenames(existingNote.content);
+      const after = extractImageFilenames(note.content);
+      const removed = [...before].filter((filename) => !after.has(filename));
+
+      await Promise.all(removed.map((filename) => deleteImageFileIfUnused(filename)));
+    }
     
     return NextResponse.json(note);
   } catch (error) {
@@ -58,9 +75,52 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    const allNotes = await prisma.note.findMany({
+      select: {
+        id: true,
+        parentId: true,
+        content: true,
+      },
+    });
+
+    const childrenByParent = new Map<string, string[]>();
+    for (const note of allNotes) {
+      if (!note.parentId) continue;
+      const children = childrenByParent.get(note.parentId) || [];
+      children.push(note.id);
+      childrenByParent.set(note.parentId, children);
+    }
+
+    const idsToDelete = new Set<string>();
+    const queue: string[] = [id];
+
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      if (!currentId || idsToDelete.has(currentId)) continue;
+      idsToDelete.add(currentId);
+
+      const children = childrenByParent.get(currentId) || [];
+      queue.push(...children);
+    }
+
+    if (!idsToDelete.has(id)) {
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    }
+
+    const imagesToCheck = new Set<string>();
+    for (const note of allNotes) {
+      if (!idsToDelete.has(note.id)) continue;
+      for (const filename of extractImageFilenames(note.content)) {
+        imagesToCheck.add(filename);
+      }
+    }
+
     await prisma.note.delete({
       where: { id },
     });
+
+    await Promise.all([...imagesToCheck].map((filename) => deleteImageFileIfUnused(filename)));
     
     return NextResponse.json({ success: true });
   } catch (error) {

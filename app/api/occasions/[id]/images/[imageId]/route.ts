@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getImagesDir } from "@/lib/paths";
-import { unlink } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
+import { deleteImageFileIfUnused } from "@/lib/imageReferences";
 
 // DELETE - remove an image
 export async function DELETE(
@@ -22,16 +19,13 @@ export async function DELETE(
       return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
     
-    // Delete file from disk
-    const filepath = path.join(getImagesDir(), image.filename);
-    if (existsSync(filepath)) {
-      await unlink(filepath);
-    }
-    
-    // Delete from database
+    // Delete from database first
     await prisma.occasionImage.delete({
       where: { id: imageId },
     });
+
+    // Delete file from disk only if nothing references it anywhere
+    await deleteImageFileIfUnused(image.filename);
     
     return NextResponse.json({ success: true });
   } catch (error) {
