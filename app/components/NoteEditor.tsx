@@ -567,7 +567,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                 value={chatInput}
                 onChange={handleChatInputChange}
                 onKeyDown={handleChatKeyDown}
-                placeholder="Ask about this note..."
+                placeholder="Chat about this note..."
                 className="flex-1 bg-transparent text-[#e3e3e3] placeholder-[#6b6b6b] resize-none outline-none text-sm px-2 py-1"
                 rows={1}
                 style={{ maxHeight: "100px" }}
