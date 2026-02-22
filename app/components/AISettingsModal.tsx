@@ -7,27 +7,23 @@ interface AISettingsModalProps {
   onClose: () => void;
 }
 
-// Storage keys
-const OPENAI_API_KEY_STORAGE_KEY = "mothership-openai-api-key";
-const ANTHROPIC_API_KEY_STORAGE_KEY = "mothership-anthropic-api-key";
+// Storage key
+const OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
 
 export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [anthropicKey, setAnthropicKey] = useState("");
-  const openaiInputRef = useRef<HTMLInputElement>(null);
+  const [apiKey, setApiKey] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load settings from localStorage
   useEffect(() => {
     if (isOpen) {
-      setOpenaiKey(localStorage.getItem(OPENAI_API_KEY_STORAGE_KEY) || "");
-      setAnthropicKey(localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) || "");
-      setTimeout(() => openaiInputRef.current?.focus(), 50);
+      setApiKey(localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || "");
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
 
   const handleSave = () => {
-    localStorage.setItem(OPENAI_API_KEY_STORAGE_KEY, openaiKey);
-    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE_KEY, anthropicKey);
+    localStorage.setItem(OPENROUTER_API_KEY_STORAGE_KEY, apiKey);
     onClose();
   };
 
@@ -57,7 +53,7 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#3f3f3f]">
-          <h2 className="text-sm font-medium text-[#ebebeb]">API Keys</h2>
+          <h2 className="text-sm font-medium text-[#ebebeb]">API Settings</h2>
           <button
             onClick={onClose}
             className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
@@ -71,35 +67,23 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
         {/* Body */}
         <div className="p-4 space-y-4">
           <div>
-            <label className="block text-xs text-[#9b9b9b] mb-1.5">OpenAI API Key</label>
+            <label className="block text-xs text-[#9b9b9b] mb-1.5">OpenRouter API Key</label>
             <input
-              ref={openaiInputRef}
+              ref={inputRef}
               type="password"
-              value={openaiKey}
-              onChange={(e) => setOpenaiKey(e.target.value)}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="sk-..."
+              placeholder="sk-or-..."
               autoComplete="off"
               data-1p-ignore
               data-lpignore="true"
               data-form-type="other"
               className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
             />
-          </div>
-          <div>
-            <label className="block text-xs text-[#9b9b9b] mb-1.5">Anthropic API Key</label>
-            <input
-              type="password"
-              value={anthropicKey}
-              onChange={(e) => setAnthropicKey(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="sk-ant-..."
-              autoComplete="off"
-              data-1p-ignore
-              data-lpignore="true"
-              data-form-type="other"
-              className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
-            />
+            <p className="text-xs text-[#6b6b6b] mt-1.5">
+              Get your API key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-[#7eb8f7] hover:underline">openrouter.ai/keys</a>
+            </p>
           </div>
         </div>
 

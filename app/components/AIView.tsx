@@ -24,25 +24,28 @@ interface AIViewProps {
 }
 
 // Storage keys
-const OPENAI_API_KEY_STORAGE_KEY = "mothership-openai-api-key";
-const ANTHROPIC_API_KEY_STORAGE_KEY = "mothership-anthropic-api-key";
+const OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
 const SELECTED_MODEL_STORAGE_KEY = "mothership-ai-model";
 const CURRENT_SESSION_STORAGE_KEY = "mothership-ai-current-session";
 
-// Model definitions
+// Model definitions - OpenRouter model IDs
 interface ModelInfo {
   id: string;
   name: string;
-  provider: "openai" | "anthropic";
-  apiModel: string;
+  provider: string;
 }
 
 const ALL_MODELS: ModelInfo[] = [
-  { id: "gpt-4o-mini", name: "GPT-4o mini", provider: "openai", apiModel: "gpt-4o-mini" },
-  { id: "gpt-4o", name: "GPT-4o", provider: "openai", apiModel: "gpt-4o" },
-  { id: "gpt-4-turbo", name: "GPT-4 Turbo", provider: "openai", apiModel: "gpt-4-turbo" },
-  { id: "claude-sonnet", name: "Claude Sonnet", provider: "anthropic", apiModel: "claude-sonnet-4-20250514" },
-  { id: "claude-haiku", name: "Claude Haiku", provider: "anthropic", apiModel: "claude-3-5-haiku-latest" },
+  { id: "openai/gpt-4o-mini", name: "GPT-4o mini", provider: "OpenAI" },
+  { id: "openai/gpt-4o", name: "GPT-4o", provider: "OpenAI" },
+  { id: "openai/gpt-4-turbo", name: "GPT-4 Turbo", provider: "OpenAI" },
+  { id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic" },
+  { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", provider: "Anthropic" },
+  { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", provider: "Google" },
+  { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", provider: "Google" },
+  { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B", provider: "Meta" },
+  { id: "deepseek/deepseek-chat", name: "DeepSeek V3", provider: "DeepSeek" },
+  { id: "mistralai/mistral-large-2411", name: "Mistral Large", provider: "Mistral" },
 ];
 
 // Format relative time
@@ -71,7 +74,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<string>(() => 
-    typeof window !== "undefined" ? localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) || "gpt-4o-mini" : "gpt-4o-mini"
+    typeof window !== "undefined" ? localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) || "openai/gpt-4o-mini" : "openai/gpt-4o-mini"
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -81,27 +84,11 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const currentSession = sessions.find((s) => s.id === currentSessionId);
   const messages = useMemo(() => currentSession?.messages || [], [currentSession?.messages]);
 
-  // Get API keys from localStorage
-  const getOpenAIKey = () => localStorage.getItem(OPENAI_API_KEY_STORAGE_KEY) || "";
-  const getAnthropicKey = () => localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) || "";
-
-  // Get available models based on which API keys are set
-  const availableModels = useMemo(() => {
-    const hasOpenAI = !!getOpenAIKey();
-    const hasAnthropic = !!getAnthropicKey();
-    return ALL_MODELS.filter(m => 
-      (m.provider === "openai" && hasOpenAI) || 
-      (m.provider === "anthropic" && hasAnthropic)
-    );
-  }, []);
+  // Get API key from localStorage
+  const getApiKey = () => localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || "";
 
   // Get currently selected model
   const selectedModel = ALL_MODELS.find(m => m.id === selectedModelId) || ALL_MODELS[0];
-
-  // Get API key for current model
-  const getApiKeyForModel = (model: ModelInfo) => {
-    return model.provider === "openai" ? getOpenAIKey() : getAnthropicKey();
-  };
 
   // Handle model selection
   const handleSelectModel = (modelId: string) => {
@@ -229,10 +216,10 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    // Check for API key based on selected model
-    const apiKey = getApiKeyForModel(selectedModel);
+    // Check for API key
+    const apiKey = getApiKey();
     if (!apiKey) {
-      setError(`Please set your ${selectedModel.provider === "openai" ? "OpenAI" : "Anthropic"} API key in settings.`);
+      setError("Please set your OpenRouter API key in settings.");
       setShowSettings(true);
       return;
     }
@@ -312,8 +299,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         body: JSON.stringify({
           messages: apiMessages,
           apiKey,
-          provider: selectedModel.provider,
-          model: selectedModel.apiModel,
+          model: selectedModel.id,
         }),
       });
 
@@ -353,7 +339,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         fetch(`/api/ai/sessions/${targetSessionId}/generate-title`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ apiKey, provider: selectedModel.provider }),
+          body: JSON.stringify({ apiKey }),
         }).then(() => loadSessions()).catch(() => {});
       } else {
         loadSessions();
@@ -376,9 +362,9 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const handleRedo = async (messageId: string) => {
     if (isLoading || !currentSessionId) return;
 
-    const apiKey = getApiKeyForModel(selectedModel);
+    const apiKey = getApiKey();
     if (!apiKey) {
-      setError(`Please set your ${selectedModel.provider === "openai" ? "OpenAI" : "Anthropic"} API key in settings.`);
+      setError("Please set your OpenRouter API key in settings.");
       return;
     }
 
@@ -416,7 +402,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
       const aiResponse = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages, apiKey, provider: selectedModel.provider, model: selectedModel.apiModel }),
+        body: JSON.stringify({ messages: apiMessages, apiKey, model: selectedModel.id }),
       });
 
       const aiData = await aiResponse.json();
@@ -544,31 +530,25 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                 </svg>
               </button>
               {showModelSelector && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-xl py-1 min-w-[160px] z-50">
-                  {availableModels.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-[#6b6b6b]">
-                      No API keys configured
-                    </div>
-                  ) : (
-                    availableModels.map((model) => (
-                      <button
-                        key={model.id}
-                        onClick={() => handleSelectModel(model.id)}
-                        className={`w-full px-3 py-1.5 text-left text-sm hover:bg-[#3f3f3f] transition-colors ${
-                          model.id === selectedModelId ? "text-[#7eb8f7]" : "text-[#e3e3e3]"
-                        }`}
-                      >
-                        <div>{model.name}</div>
-                        <div className="text-xs text-[#6b6b6b]">{model.provider === "openai" ? "OpenAI" : "Anthropic"}</div>
-                      </button>
-                    ))
-                  )}
+                <div className="absolute top-full left-0 mt-1 bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-xl py-1 min-w-[180px] z-50">
+                  {ALL_MODELS.map((model) => (
+                    <button
+                      key={model.id}
+                      onClick={() => handleSelectModel(model.id)}
+                      className={`w-full px-3 py-1.5 text-left text-sm hover:bg-[#3f3f3f] transition-colors ${
+                        model.id === selectedModelId ? "text-[#7eb8f7]" : "text-[#e3e3e3]"
+                      }`}
+                    >
+                      <div>{model.name}</div>
+                      <div className="text-xs text-[#6b6b6b]">{model.provider}</div>
+                    </button>
+                  ))}
                   <div className="border-t border-[#3f3f3f] mt-1 pt-1">
                     <button
                       onClick={() => { setShowModelSelector(false); setShowSettings(true); }}
                       className="w-full px-3 py-1.5 text-left text-xs text-[#9b9b9b] hover:bg-[#3f3f3f] transition-colors"
                     >
-                      Add API keys...
+                      API settings...
                     </button>
                   </div>
                 </div>

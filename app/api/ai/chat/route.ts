@@ -87,7 +87,7 @@ async function getRelevantContext(query: string, limit: number = 5): Promise<str
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, apiKey, provider = "openai", model } = body;
+    const { messages, apiKey, model = "openai/gpt-4o-mini" } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Messages are required" }, { status: 400 });
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json({ 
         error: "API key required",
-        message: "Please set your API key in Settings to use AI Chat." 
+        message: "Please set your OpenRouter API key in Settings." 
       }, { status: 400 });
     }
 
@@ -118,54 +118,28 @@ Use this context to provide helpful, accurate responses. If referencing their no
 
 Be helpful, concise, and friendly. Use British English spelling.`;
 
-    // Prepare API request based on provider
-    let apiUrl: string;
-    let apiHeaders: Record<string, string>;
-    let apiBody: object;
-
-    if (provider === "anthropic") {
-      apiUrl = "https://api.anthropic.com/v1/messages";
-      apiHeaders = {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      };
-      apiBody = {
-        model: model || "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: messages.map((m: { role: string; content: string }) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      };
-    } else {
-      // Default to OpenAI
-      apiUrl = "https://api.openai.com/v1/chat/completions";
-      apiHeaders = {
+    // Call OpenRouter API (OpenAI-compatible format)
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
-      };
-      apiBody = {
-        model: model || "gpt-4o-mini",
+        "HTTP-Referer": "https://mothership.app",
+        "X-Title": "Mothership",
+      },
+      body: JSON.stringify({
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
         ],
         max_tokens: 1024,
-      };
-    }
-
-    // Make API request
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: apiHeaders,
-      body: JSON.stringify(apiBody),
+      }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("AI API error:", error);
+      console.error("OpenRouter API error:", error);
       return NextResponse.json({ 
         error: "AI request failed",
         message: `API error: ${response.status}` 
@@ -173,14 +147,7 @@ Be helpful, concise, and friendly. Use British English spelling.`;
     }
 
     const data = await response.json();
-
-    // Extract response based on provider
-    let assistantMessage: string;
-    if (provider === "anthropic") {
-      assistantMessage = data.content?.[0]?.text || "No response";
-    } else {
-      assistantMessage = data.choices?.[0]?.message?.content || "No response";
-    }
+    const assistantMessage = data.choices?.[0]?.message?.content || "No response";
 
     return NextResponse.json({
       message: assistantMessage,

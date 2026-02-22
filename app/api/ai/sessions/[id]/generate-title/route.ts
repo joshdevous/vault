@@ -9,7 +9,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { apiKey, provider = "openai" } = body;
+    const { apiKey } = body;
 
     if (!apiKey) {
       return NextResponse.json({ error: "API key required" }, { status: 400 });
@@ -38,51 +38,28 @@ export async function POST(
 
 ${conversationSnippet}`;
 
-    // Call AI to generate title
-    let title: string;
+    // Call OpenRouter API to generate title (use a fast cheap model)
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://mothership.app",
+        "X-Title": "Mothership",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-4o-mini",
+        messages: [{ role: "user", content: titlePrompt }],
+        max_tokens: 20,
+      }),
+    });
 
-    if (provider === "anthropic") {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 20,
-          messages: [{ role: "user", content: titlePrompt }],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Anthropic API error");
-      }
-
-      const data = await response.json();
-      title = data.content[0]?.text?.trim() || "New Chat";
-    } else {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: titlePrompt }],
-          max_tokens: 20,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("OpenAI API error");
-      }
-
-      const data = await response.json();
-      title = data.choices[0]?.message?.content?.trim() || "New Chat";
+    if (!response.ok) {
+      throw new Error("OpenRouter API error");
     }
+
+    const data = await response.json();
+    let title = data.choices?.[0]?.message?.content?.trim() || "New Chat";
 
     // Clean up title
     title = title.replace(/^["']|["']$/g, "").slice(0, 50);
