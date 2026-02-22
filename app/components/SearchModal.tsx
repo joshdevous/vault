@@ -197,9 +197,6 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
               onMouseEnter={() => setSelectedIndex(index)}
             >
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-[#6b6b6b]">
-                  {getTypeIcon(result.type)}
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-[#e3e3e3] truncate">
@@ -209,7 +206,7 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
                       {getTypeLabel(result.type)}
                     </span>
                   </div>
-                  <p className="text-sm text-[#9b9b9b] mt-1 line-clamp-2">
+                  <p className="text-sm text-[#9b9b9b] mt-1 line-clamp-1">
                     {result.snippet}
                   </p>
                   {result.parentTitle && result.type === "memory" && (

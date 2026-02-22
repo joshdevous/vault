@@ -517,7 +517,15 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                       : "text-[#9b9b9b] hover:bg-[#2f2f2f]"
                   }`}
                 >
-                  <span className={`text-sm truncate flex-1 ${blurTitles ? "blur-sm select-none" : ""}`}>{session.title}</span>
+                  <span className="text-sm truncate flex-1">
+                    {blurTitles ? (
+                      <span className="tracking-[0.15em] text-[#6b6b6b]">
+                        {"●".repeat(Math.min(Math.max(Math.round(session.title.length * 0.75), 3), 15))}
+                      </span>
+                    ) : (
+                      session.title
+                    )}
+                  </span>
                   {/* <span className="text-xs text-[#6b6b6b] shrink-0">{formatRelativeTime(session.updatedAt)}</span> */}
                   <button
                     onClick={(e) => {
@@ -542,7 +550,9 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         {/* Top bar */}
         <div className="flex items-center justify-between h-11 px-3 border-b border-[#2f2f2f] shrink-0">
           <div className="flex items-center gap-2">
-            <span className={`text-sm text-[#9b9b9b] ${blurTitles ? "blur-sm select-none" : ""}`}>{currentSession?.title || "AI Chat"}</span>
+            <span className="text-sm text-[#9b9b9b]">
+              {currentSession?.title || "AI Chat"}
+            </span>
             {/* Model selector */}
             <div className="relative" ref={modelSelectorRef}>
               <button

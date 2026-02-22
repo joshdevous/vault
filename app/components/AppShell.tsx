@@ -558,6 +558,16 @@ export function AppShell() {
     }
   };
 
+  // Don't render until hydrated to prevent flash of wrong content
+  if (!hydrated) {
+    return (
+      <div className="flex flex-1 overflow-hidden bg-[#191919]">
+        <div className="w-64 border-r border-[#2f2f2f] bg-[#1e1e1e]" />
+        <main className="flex-1" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
