@@ -81,6 +81,8 @@ interface NoteItemProps {
   expandedNotes: Set<string>;
   editingNoteId: string | null;
   dragState: DragState;
+  hiddenNoteNames: Set<string>;
+  obfuscateTitle: (title: string) => string;
   onToggleExpand: (id: string) => void;
   onExpandNote: (id: string) => void;
   onSelectNote: (id: string) => void;
@@ -148,6 +150,8 @@ function NoteItem({
   expandedNotes,
   editingNoteId,
   dragState,
+  hiddenNoteNames,
+  obfuscateTitle,
   onToggleExpand,
   onExpandNote, 
   onSelectNote,
@@ -255,12 +259,12 @@ function NoteItem({
             />
           ) : (
             <span 
-              className="truncate"
+              className={`truncate ${hiddenNoteNames.has(note.id) ? "tracking-[0.15em] text-[#6b6b6b]" : ""}`}
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 onStartRename(note.id);
               }}
-            >{note.title || "Untitled"}</span>
+            >{hiddenNoteNames.has(note.id) ? obfuscateTitle(note.title || "Untitled") : (note.title || "Untitled")}</span>
           )}
         </div>
 
@@ -307,6 +311,8 @@ function NoteItem({
               selectedNoteId={selectedNoteId}
               expandedNotes={expandedNotes}
               editingNoteId={editingNoteId}
+              hiddenNoteNames={hiddenNoteNames}
+              obfuscateTitle={obfuscateTitle}
               onToggleExpand={onToggleExpand}
               onExpandNote={onExpandNote}
               onSelectNote={onSelectNote}
@@ -356,6 +362,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   const [isExporting, setIsExporting] = useState(false);
   const [iconPickerNoteId, setIconPickerNoteId] = useState<string | null>(null);
   const [iconPickerPosition, setIconPickerPosition] = useState<{ x: number; y: number } | null>(null);
+  const [hiddenNoteNames, setHiddenNoteNames] = useState<Set<string>>(new Set());
   
   // Drag and drop state
   const [dragState, setDragState] = useState<DragState>({
@@ -373,6 +380,10 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
     const savedExpanded = localStorage.getItem("expanded-notes");
     if (savedExpanded) {
       setExpandedNotes(new Set(JSON.parse(savedExpanded)));
+    }
+    const savedHiddenNames = localStorage.getItem("hidden-note-names");
+    if (savedHiddenNames) {
+      setHiddenNoteNames(new Set(JSON.parse(savedHiddenNames)));
     }
     setHydrated(true);
   }, []);
@@ -408,6 +419,32 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
       localStorage.setItem("expanded-notes", JSON.stringify([...expandedNotes]));
     }
   }, [expandedNotes, hydrated]);
+
+  // Persist hidden note names to localStorage
+  useEffect(() => {
+    if (hydrated) {
+      localStorage.setItem("hidden-note-names", JSON.stringify([...hiddenNoteNames]));
+    }
+  }, [hiddenNoteNames, hydrated]);
+
+  // Toggle hidden name for a note
+  const toggleHiddenName = (noteId: string) => {
+    setHiddenNoteNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(noteId)) {
+        next.delete(noteId);
+      } else {
+        next.add(noteId);
+      }
+      return next;
+    });
+  };
+
+  // Obfuscate a title with bullets (same formula as AI chat)
+  const obfuscateTitle = (title: string): string => {
+    const bulletCount = Math.min(Math.max(Math.round(title.length * 0.75), 3), 15);
+    return "●".repeat(bulletCount);
+  };
 
   // Filter out archived notes before building tree
   const activeNotes = useMemo(() => notes.filter(n => !n.archived), [notes]);
@@ -629,6 +666,8 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
                   expandedNotes={expandedNotes}
                   editingNoteId={editingNoteId}
                   dragState={dragState}
+                  hiddenNoteNames={hiddenNoteNames}
+                  obfuscateTitle={obfuscateTitle}
                   onToggleExpand={toggleNoteExpand}
                   onExpandNote={expandNote}
                   onSelectNote={onSelectNote}
@@ -832,6 +871,30 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Change Icon
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
+            onClick={() => {
+              toggleHiddenName(contextMenu.noteId);
+              setContextMenu(null);
+            }}
+          >
+            {hiddenNoteNames.has(contextMenu.noteId) ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Unhide Name
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+                Hide Name
+              </>
+            )}
           </button>
           <button
             className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
