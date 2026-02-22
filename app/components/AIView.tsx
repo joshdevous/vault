@@ -23,10 +23,27 @@ interface AIViewProps {
   onBack: () => void;
 }
 
-// Storage keys (only for API key, not chat history)
-const API_KEY_STORAGE_KEY = "mothership-ai-api-key";
-const AI_PROVIDER_STORAGE_KEY = "mothership-ai-provider";
+// Storage keys
+const OPENAI_API_KEY_STORAGE_KEY = "mothership-openai-api-key";
+const ANTHROPIC_API_KEY_STORAGE_KEY = "mothership-anthropic-api-key";
+const SELECTED_MODEL_STORAGE_KEY = "mothership-ai-model";
 const CURRENT_SESSION_STORAGE_KEY = "mothership-ai-current-session";
+
+// Model definitions
+interface ModelInfo {
+  id: string;
+  name: string;
+  provider: "openai" | "anthropic";
+  apiModel: string;
+}
+
+const ALL_MODELS: ModelInfo[] = [
+  { id: "gpt-4o-mini", name: "GPT-4o mini", provider: "openai", apiModel: "gpt-4o-mini" },
+  { id: "gpt-4o", name: "GPT-4o", provider: "openai", apiModel: "gpt-4o" },
+  { id: "gpt-4-turbo", name: "GPT-4 Turbo", provider: "openai", apiModel: "gpt-4-turbo" },
+  { id: "claude-sonnet", name: "Claude Sonnet", provider: "anthropic", apiModel: "claude-sonnet-4-20250514" },
+  { id: "claude-haiku", name: "Claude Haiku", provider: "anthropic", apiModel: "claude-3-5-haiku-latest" },
+];
 
 // Format relative time
 function formatRelativeTime(date: Date): string {
@@ -52,16 +69,59 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState<string>(() => 
+    typeof window !== "undefined" ? localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) || "gpt-4o-mini" : "gpt-4o-mini"
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const modelSelectorRef = useRef<HTMLDivElement>(null);
 
   // Get current session
   const currentSession = sessions.find((s) => s.id === currentSessionId);
   const messages = useMemo(() => currentSession?.messages || [], [currentSession?.messages]);
 
-  // Get API key from localStorage
-  const getApiKey = () => localStorage.getItem(API_KEY_STORAGE_KEY) || "";
-  const getProvider = () => localStorage.getItem(AI_PROVIDER_STORAGE_KEY) as "openai" | "anthropic" || "openai";
+  // Get API keys from localStorage
+  const getOpenAIKey = () => localStorage.getItem(OPENAI_API_KEY_STORAGE_KEY) || "";
+  const getAnthropicKey = () => localStorage.getItem(ANTHROPIC_API_KEY_STORAGE_KEY) || "";
+
+  // Get available models based on which API keys are set
+  const availableModels = useMemo(() => {
+    const hasOpenAI = !!getOpenAIKey();
+    const hasAnthropic = !!getAnthropicKey();
+    return ALL_MODELS.filter(m => 
+      (m.provider === "openai" && hasOpenAI) || 
+      (m.provider === "anthropic" && hasAnthropic)
+    );
+  }, []);
+
+  // Get currently selected model
+  const selectedModel = ALL_MODELS.find(m => m.id === selectedModelId) || ALL_MODELS[0];
+
+  // Get API key for current model
+  const getApiKeyForModel = (model: ModelInfo) => {
+    return model.provider === "openai" ? getOpenAIKey() : getAnthropicKey();
+  };
+
+  // Handle model selection
+  const handleSelectModel = (modelId: string) => {
+    setSelectedModelId(modelId);
+    localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, modelId);
+    setShowModelSelector(false);
+  };
+
+  // Close model selector on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modelSelectorRef.current && !modelSelectorRef.current.contains(e.target as Node)) {
+        setShowModelSelector(false);
+      }
+    };
+    if (showModelSelector) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showModelSelector]);
 
   // Load sessions from database
   const loadSessions = useCallback(async () => {
@@ -169,11 +229,10 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    // Check for API key
-    const apiKey = getApiKey();
-    const provider = getProvider();
+    // Check for API key based on selected model
+    const apiKey = getApiKeyForModel(selectedModel);
     if (!apiKey) {
-      setError("Please set your API key in settings to use AI Chat.");
+      setError(`Please set your ${selectedModel.provider === "openai" ? "OpenAI" : "Anthropic"} API key in settings.`);
       setShowSettings(true);
       return;
     }
@@ -253,7 +312,8 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         body: JSON.stringify({
           messages: apiMessages,
           apiKey,
-          provider,
+          provider: selectedModel.provider,
+          model: selectedModel.apiModel,
         }),
       });
 
@@ -293,7 +353,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         fetch(`/api/ai/sessions/${targetSessionId}/generate-title`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ apiKey, provider }),
+          body: JSON.stringify({ apiKey, provider: selectedModel.provider }),
         }).then(() => loadSessions()).catch(() => {});
       } else {
         loadSessions();
@@ -316,10 +376,9 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const handleRedo = async (messageId: string) => {
     if (isLoading || !currentSessionId) return;
 
-    const apiKey = getApiKey();
-    const provider = getProvider();
+    const apiKey = getApiKeyForModel(selectedModel);
     if (!apiKey) {
-      setError("Please set your API key in settings.");
+      setError(`Please set your ${selectedModel.provider === "openai" ? "OpenAI" : "Anthropic"} API key in settings.`);
       return;
     }
 
@@ -357,7 +416,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
       const aiResponse = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages, apiKey, provider }),
+        body: JSON.stringify({ messages: apiMessages, apiKey, provider: selectedModel.provider, model: selectedModel.apiModel }),
       });
 
       const aiData = await aiResponse.json();
@@ -470,7 +529,52 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <div className="flex items-center justify-between h-11 px-3 border-b border-[#2f2f2f] shrink-0">
-          <span className="text-sm text-[#9b9b9b]">{currentSession?.title || "AI Chat"}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#9b9b9b]">{currentSession?.title || "AI Chat"}</span>
+            {/* Model selector */}
+            <div className="relative" ref={modelSelectorRef}>
+              <button
+                onClick={() => setShowModelSelector(!showModelSelector)}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-[#7eb8f7] hover:bg-[#3f3f3f] rounded transition-colors"
+                title="Select model"
+              >
+                {selectedModel.name}
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showModelSelector && (
+                <div className="absolute top-full left-0 mt-1 bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-xl py-1 min-w-[160px] z-50">
+                  {availableModels.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-[#6b6b6b]">
+                      No API keys configured
+                    </div>
+                  ) : (
+                    availableModels.map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => handleSelectModel(model.id)}
+                        className={`w-full px-3 py-1.5 text-left text-sm hover:bg-[#3f3f3f] transition-colors ${
+                          model.id === selectedModelId ? "text-[#7eb8f7]" : "text-[#e3e3e3]"
+                        }`}
+                      >
+                        <div>{model.name}</div>
+                        <div className="text-xs text-[#6b6b6b]">{model.provider === "openai" ? "OpenAI" : "Anthropic"}</div>
+                      </button>
+                    ))
+                  )}
+                  <div className="border-t border-[#3f3f3f] mt-1 pt-1">
+                    <button
+                      onClick={() => { setShowModelSelector(false); setShowSettings(true); }}
+                      className="w-full px-3 py-1.5 text-left text-xs text-[#9b9b9b] hover:bg-[#3f3f3f] transition-colors"
+                    >
+                      Add API keys...
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
@@ -502,7 +606,12 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
             <div />
           ) : (
             <div className="max-w-3xl mx-auto px-6 py-4 space-y-6">
-              {messages.map((message) => (
+              {messages.map((message, index) => {
+                // Check if this is the last assistant message
+                const isLastAssistantMessage = message.role === "assistant" && 
+                  !messages.slice(index + 1).some(m => m.role === "assistant");
+                
+                return (
                 <div
                   key={message.id}
                   className={message.role === "user" ? "flex justify-end" : ""}
@@ -512,14 +621,15 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
                   ) : (
-                    <div className="group">
-                      <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#1a1a1a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
+                    <div>
+                      <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
                         <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
-                      <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {isLastAssistantMessage && (
+                      <div className="flex gap-3 mt-3">
                         <button
                           onClick={() => navigator.clipboard.writeText(message.content)}
-                          className="p-1.5 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+                          className="text-[#6b6b6b] hover:text-[#ebebeb] transition-colors"
                           title="Copy"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -529,7 +639,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                         </button>
                         <button
                           onClick={() => handleRedo(message.id)}
-                          className="p-1.5 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+                          className="text-[#6b6b6b] hover:text-[#ebebeb] transition-colors"
                           title="Regenerate"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -538,10 +648,11 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                           </svg>
                         </button>
                       </div>
+                      )}
                     </div>
                   )}
                 </div>
-              ))}
+              );})}
               {isLoading && (
                 <div className="flex gap-1.5 py-2">
                   <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>

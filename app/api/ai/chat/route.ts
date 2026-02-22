@@ -87,7 +87,7 @@ async function getRelevantContext(query: string, limit: number = 5): Promise<str
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, apiKey, provider = "openai" } = body;
+    const { messages, apiKey, provider = "openai", model } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Messages are required" }, { status: 400 });
@@ -131,7 +131,7 @@ Be helpful, concise, and friendly. Use British English spelling.`;
         "anthropic-version": "2023-06-01",
       };
       apiBody = {
-        model: "claude-sonnet-4-20250514",
+        model: model || "claude-sonnet-4-20250514",
         max_tokens: 1024,
         system: systemPrompt,
         messages: messages.map((m: { role: string; content: string }) => ({
@@ -147,7 +147,7 @@ Be helpful, concise, and friendly. Use British English spelling.`;
         "Authorization": `Bearer ${apiKey}`,
       };
       apiBody = {
-        model: "gpt-4o-mini",
+        model: model || "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
