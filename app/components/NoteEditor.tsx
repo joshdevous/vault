@@ -321,6 +321,14 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
       chatInputRef.current.style.height = "auto";
     }
 
+    // Add assistant message immediately to show loading dots
+    const tempAssistantId = `assistant-${Date.now()}`;
+    setChatMessages(prev => [...prev, {
+      id: tempAssistantId,
+      role: "assistant",
+      content: "",
+    }]);
+
     try {
       const apiMessages = [...chatMessages, userMessage].map(m => ({
         role: m.role,
@@ -349,14 +357,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
       }
 
       // Stream the response
-      const tempAssistantId = `assistant-${Date.now()}`;
       let streamedContent = "";
-
-      setChatMessages(prev => [...prev, {
-        id: tempAssistantId,
-        role: "assistant",
-        content: "",
-      }]);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -378,6 +379,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
       }
     } catch (err) {
       setChatError(err instanceof Error ? err.message : "Failed to get response");
+      // Remove the empty assistant message on error
+      setChatMessages(prev => prev.filter(m => m.id !== tempAssistantId));
     } finally {
       setIsChatLoading(false);
     }
