@@ -84,6 +84,34 @@ async function getRelevantContext(query: string, limit: number = 5): Promise<str
   return context;
 }
 
+// Check if model is an image generation model
+function isImageGenerationModel(modelId: string): boolean {
+  const imageGenPrefixes = [
+    "stability/",
+    "black-forest-labs/",
+    "ideogram/",
+    "recraft/",
+    "openai/dall-e",
+    "google/imagen",
+    "nv-",
+  ];
+  const imageGenKeywords = [
+    "flux",
+    "stable-diffusion", 
+    "sdxl",
+    "imagen",
+    "dall-e",
+    "image-gen",
+    "nano-banana",
+    "text-to-image",
+    "image-preview", // For models like "Gemini 3 Pro Image Preview"
+  ];
+  
+  const lowerId = modelId.toLowerCase();
+  return imageGenPrefixes.some(p => lowerId.startsWith(p)) ||
+         imageGenKeywords.some(k => lowerId.includes(k));
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -112,6 +140,82 @@ export async function POST(request: NextRequest) {
         const textPart = lastUserMessage.content.find((p: { type: string; text?: string }) => p.type === "text");
         contextQuery = textPart?.text || "";
       }
+    }
+
+    // Handle image generation models differently
+    if (isImageGenerationModel(model)) {
+      const prompt = contextQuery || "Generate an image";
+      
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://mothership.app",
+          "X-Title": "Mothership",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("OpenRouter image API error:", error);
+        return NextResponse.json({ 
+          error: "Image generation failed",
+          message: `API error: ${response.status}` 
+        }, { status: response.status });
+      }
+
+      const data = await response.json();
+      console.log("Image model response:", JSON.stringify(data, null, 2));
+      
+      // Image models can return data in different formats:
+      // 1. Standard chat format with URL in content
+      // 2. Generations format with data[].url or data[].b64_json
+      // 3. Custom formats
+      
+      let imageContent = "";
+      
+      // Try standard chat completion format first
+      const content = data.choices?.[0]?.message?.content;
+      if (content) {
+        // Check if it's a URL or base64
+        if (content.startsWith("http") || content.startsWith("data:image")) {
+          imageContent = `![Generated Image](${content})`;
+        } else if (content.includes("](http") || content.includes("](data:image")) {
+          // Already markdown formatted
+          imageContent = content;
+        } else {
+          // Might be a text description or error
+          imageContent = content;
+        }
+      }
+      
+      // Try generations format (some image models use this)
+      if (!imageContent && data.data) {
+        const imageData = data.data[0];
+        if (imageData?.url) {
+          imageContent = `![Generated Image](${imageData.url})`;
+        } else if (imageData?.b64_json) {
+          imageContent = `![Generated Image](data:image/png;base64,${imageData.b64_json})`;
+        }
+      }
+      
+      if (!imageContent) {
+        return NextResponse.json({ 
+          error: "No image generated",
+          message: "The model did not return an image. Response: " + JSON.stringify(data).slice(0, 200)
+        }, { status: 500 });
+      }
+
+      return new Response(imageContent, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
     }
 
     // Get relevant context from notes/vault/memories
