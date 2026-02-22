@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Generate title from first message
-function generateTitle(content: string): string {
-  const cleaned = content.slice(0, 50).trim();
-  return cleaned.length < content.length ? cleaned + "..." : cleaned;
-}
-
 // POST /api/ai/sessions/[id]/messages - Add a message to a session
 export async function POST(
   request: NextRequest,
@@ -21,10 +15,9 @@ export async function POST(
       return NextResponse.json({ error: "Role and content are required" }, { status: 400 });
     }
 
-    // Get current session to check if we need to update title
+    // Check session exists
     const session = await prisma.chatSession.findUnique({
       where: { id },
-      include: { messages: true },
     });
 
     if (!session) {
@@ -39,14 +32,6 @@ export async function POST(
         sessionId: id,
       },
     });
-
-    // If this is the first user message and title is still "New Chat", update it
-    if (session.title === "New Chat" && role === "user" && session.messages.length === 0) {
-      await prisma.chatSession.update({
-        where: { id },
-        data: { title: generateTitle(content) },
-      });
-    }
 
     // Touch the session to update updatedAt
     await prisma.chatSession.update({

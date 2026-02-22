@@ -286,8 +286,17 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         )
       );
 
-      // Reload sessions to get updated title if needed
-      loadSessions();
+      // Generate AI title in background if this is the first exchange
+      const currentSession = sessions.find(s => s.id === targetSessionId);
+      if (currentSession?.title === "New Chat" || !currentSession) {
+        fetch(`/api/ai/sessions/${targetSessionId}/generate-title`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apiKey, provider }),
+        }).then(() => loadSessions()).catch(() => {});
+      } else {
+        loadSessions();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get AI response");
     } finally {
@@ -408,35 +417,26 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
           {messages.length === 0 ? (
             <div />
           ) : (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="max-w-3xl mx-auto space-y-6">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={message.role === "user" ? "flex justify-end" : ""}
                 >
-                  <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                      message.role === "user"
-                        ? "bg-[#3f3f3f] text-[#e3e3e3]"
-                        : "bg-[#252525] text-[#e3e3e3] border border-[#3f3f3f]"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                    <p className="text-xs text-[#6b6b6b] mt-1">
-                      {message.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
+                  {message.role === "user" ? (
+                    <div className="max-w-[80%] rounded-2xl px-4 py-2.5 bg-[#3f3f3f] text-[#e3e3e3]">
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    </div>
+                  ) : (
+                    <p className="text-[#e3e3e3] whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  )}
                 </div>
               ))}
               {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-[#252525] border border-[#3f3f3f] rounded-lg px-4 py-3">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                      <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                      <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
-                    </div>
-                  </div>
+                <div className="flex gap-1.5 py-2">
+                  <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                  <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                  <span className="w-2 h-2 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
                 </div>
               )}
               <div ref={messagesEndRef} />

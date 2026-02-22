@@ -100,9 +100,6 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
               className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
             />
           </div>
-          <p className="text-xs text-[#6b6b6b]">
-            Your API key is stored locally and never sent to our servers.
-          </p>
         </div>
 
         {/* Footer */}
