@@ -26,8 +26,17 @@ const EMOJI_OPTIONS = [
 export function IconPicker({ currentIcon, noteId, onIconChange, onClose }: IconPickerProps) {
   const [activeTab, setActiveTab] = useState<"emoji" | "custom">("emoji");
   const [uploading, setUploading] = useState(false);
+  const [existingIcons, setExistingIcons] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch existing custom icons
+  useEffect(() => {
+    fetch("/api/icons")
+      .then(res => res.json())
+      .then(data => setExistingIcons(data.icons || []))
+      .catch(() => setExistingIcons([]));
+  }, []);
 
   // Close on click outside
   useEffect(() => {
@@ -62,6 +71,23 @@ export function IconPicker({ currentIcon, noteId, onIconChange, onClose }: IconP
       }
     } catch (error) {
       console.error("Failed to update icon:", error);
+    }
+  };
+
+  const handleSelectExistingIcon = async (filename: string) => {
+    const iconValue = `icon:${filename}`;
+    try {
+      const res = await fetch(`/api/notes/${noteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ icon: iconValue }),
+      });
+      if (res.ok) {
+        onIconChange(iconValue);
+        onClose();
+      }
+    } catch (error) {
+      console.error("Failed to select icon:", error);
     }
   };
 
@@ -188,6 +214,30 @@ export function IconPicker({ currentIcon, noteId, onIconChange, onClose }: IconP
                   className="w-8 h-8 rounded object-cover"
                 />
                 <span className="text-xs text-[#9b9b9b] flex-1">Current icon</span>
+              </div>
+            )}
+
+            {/* Existing custom icons grid */}
+            {existingIcons.length > 0 && (
+              <div>
+                <p className="text-xs text-[#9b9b9b] mb-2">Previously uploaded</p>
+                <div className="grid grid-cols-8 gap-1">
+                  {existingIcons.map((filename) => (
+                    <button
+                      key={filename}
+                      onClick={() => handleSelectExistingIcon(filename)}
+                      className={`w-8 h-8 flex items-center justify-center hover:bg-[#3f3f3f] rounded transition-colors overflow-hidden ${
+                        currentIcon === `icon:${filename}` ? "ring-2 ring-[#7eb8f7]" : ""
+                      }`}
+                    >
+                      <img
+                        src={`/api/icons/${filename}`}
+                        alt=""
+                        className="w-7 h-7 rounded-sm object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
