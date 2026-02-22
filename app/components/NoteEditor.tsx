@@ -356,7 +356,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
       setChatError(err instanceof Error ? err.message : "Failed to get response");
     } finally {
       setIsChatLoading(false);
-      chatInputRef.current?.focus();
+      // Small delay to ensure textarea is re-enabled before focusing
+      setTimeout(() => chatInputRef.current?.focus(), 50);
     }
   };
 
