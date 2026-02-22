@@ -88,18 +88,29 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // AI Chat state
+  // AI Chat state - persisted per note
   const [showAIChat, setShowAIChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [allChatMessages, setAllChatMessages] = useState<Map<string, ChatMessage[]>>(new Map());
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Clear chat when note changes
+  // Get current note's chat messages
+  const chatMessages = allChatMessages.get(note.id) || [];
+  const setChatMessages = (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
+    setAllChatMessages(prev => {
+      const newMap = new Map(prev);
+      const currentMessages = prev.get(note.id) || [];
+      const newMessages = typeof updater === "function" ? updater(currentMessages) : updater;
+      newMap.set(note.id, newMessages);
+      return newMap;
+    });
+  };
+
+  // Clear input when note changes
   useEffect(() => {
-    setChatMessages([]);
     setChatInput("");
     setChatError(null);
   }, [note.id]);
