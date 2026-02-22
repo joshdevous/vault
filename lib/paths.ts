@@ -5,8 +5,8 @@ import { existsSync, mkdirSync } from "fs";
 // In development: use project folder
 // In production: use user's app data folder
 export function getDataDir(): string {
-  // Check if we're in a packaged Electron app
-  const isPackaged = process.env.NODE_ENV === "production" && !process.cwd().includes("node_modules");
+  // Check if we're in a packaged Electron app using environment variable set by main.js
+  const isPackaged = process.env.NEXT_PRIVATE_STANDALONE === "1";
   
   if (isPackaged) {
     // Use a persistent folder in user's app data
