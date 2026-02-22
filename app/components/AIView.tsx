@@ -35,7 +35,6 @@ interface ModelInfo {
   name: string;
   provider: string;
   vision?: boolean;
-  imageGeneration?: boolean;
 }
 
 // Format relative time
@@ -808,15 +807,6 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                           </svg>
                         </span>
                       )}
-                      {model.imageGeneration && (
-                        <span title="Generates images">
-                          <svg className="w-3.5 h-3.5 text-[#6b6b6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15l-5-5L5 21"/>
-                          </svg>
-                        </span>
-                      )}
                     </button>
                   ))}
                 </div>
@@ -887,7 +877,14 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                   ) : (
                     <div>
                       <div className="prose prose-invert prose-base max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          components={{
+                            img: ({ src, alt, ...props }) => {
+                              if (!src) return null;
+                              return <img src={src} alt={alt || "Image"} className="max-w-full rounded-lg" {...props} />;
+                            }
+                          }}
+                        >{message.content}</ReactMarkdown>
                       </div>
                       {isLastAssistantMessage && (
                       <div className="flex gap-3 mt-3">

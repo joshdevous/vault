@@ -122,7 +122,8 @@ export async function GET(request: NextRequest) {
   // Check cache
   if (!forceRefresh && cachedModels && Date.now() - cacheTimestamp < CACHE_DURATION) {
     const filtered = filterModels(cachedModels, search);
-    return NextResponse.json({ models: filtered.map(transformModel) });
+    const transformed = filtered.map(transformModel).filter(m => !m.imageGeneration);
+    return NextResponse.json({ models: transformed });
   }
 
   try {
@@ -141,7 +142,8 @@ export async function GET(request: NextRequest) {
     cacheTimestamp = Date.now();
 
     const filtered = filterModels(cachedModels, search);
-    return NextResponse.json({ models: filtered.map(transformModel) });
+    const transformed = filtered.map(transformModel).filter(m => !m.imageGeneration);
+    return NextResponse.json({ models: transformed });
   } catch (error) {
     console.error("Failed to fetch models:", error);
     return NextResponse.json(

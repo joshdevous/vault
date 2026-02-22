@@ -18,7 +18,6 @@ interface OpenRouterModel {
   description?: string;
   contextLength: number;
   vision: boolean;
-  imageGeneration: boolean;
   pricing: {
     prompt: number;
     completion: number;
@@ -287,15 +286,6 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                             </svg>
                           </span>
                         )}
-                        {model?.imageGeneration && (
-                          <span title="Image generation" className="text-[#6b6b6b]">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
-                              <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15l-5-5L5 21"/>
-                            </svg>
-                          </span>
-                        )}
                       </div>
                       <button
                         onClick={() => setEnabledModelIds(prev => prev.filter(id => id !== modelId))}
@@ -360,15 +350,6 @@ export function AISettingsModal({ isOpen, onClose }: AISettingsModalProps) {
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                </span>
-                              )}
-                              {model.imageGeneration && (
-                                <span title="Generates images" className="text-[#6b6b6b]">
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15l-5-5L5 21"/>
                                   </svg>
                                 </span>
                               )}
