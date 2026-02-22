@@ -95,8 +95,30 @@ interface NoteItemProps {
   onDragEnd: () => void;
 }
 
-// Document icon - filled if has content, outline if empty
-function NoteIcon({ hasContent }: { hasContent: boolean }) {
+// Note icon - can be emoji, custom image, or default document icon
+function NoteIcon({ icon, hasContent }: { icon: string; hasContent: boolean }) {
+  // Custom image icon (stored as "icon:filename.ext")
+  if (icon.startsWith("icon:")) {
+    const filename = icon.substring(5);
+    return (
+      <img 
+        src={`/api/icons/${filename}`} 
+        alt="" 
+        className="w-4 h-4 shrink-0 rounded-sm object-cover"
+      />
+    );
+  }
+  
+  // Emoji icon (any non-default value that's not an image)
+  if (icon && icon !== "📄") {
+    return (
+      <span className="w-4 h-4 shrink-0 text-sm leading-none flex items-center justify-center">
+        {icon}
+      </span>
+    );
+  }
+  
+  // Default document icon
   if (hasContent) {
     // Filled document icon with lines
     return (
@@ -217,7 +239,7 @@ function NoteItem({
 
         {/* Note content */}
         <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-          <NoteIcon hasContent={note.content.length > 0 && note.content !== "<p></p>"} />
+          <NoteIcon icon={note.icon} hasContent={note.content.length > 0 && note.content !== "<p></p>"} />
           {isEditing ? (
             <input
               ref={inputRef}

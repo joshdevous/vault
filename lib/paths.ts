@@ -56,3 +56,15 @@ export function getImagesDir(): string {
   
   return imagesDir;
 }
+
+export function getIconsDir(): string {
+  const dataDir = getDataDir();
+  const iconsDir = path.join(dataDir, "data", "icons");
+  
+  // Ensure icons directory exists
+  if (!existsSync(iconsDir)) {
+    mkdirSync(iconsDir, { recursive: true });
+  }
+  
+  return iconsDir;
+}
