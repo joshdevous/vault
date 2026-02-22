@@ -68,6 +68,10 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // Handle case where session was already deleted or doesn't exist
+    if ((error as { code?: string }).code === "P2025") {
+      return NextResponse.json({ success: true }); // Already deleted, treat as success
+    }
     console.error("Failed to delete chat session:", error);
     return NextResponse.json({ error: "Failed to delete session" }, { status: 500 });
   }
