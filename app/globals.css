@@ -1,6 +1,17 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Force cursor pointer on all interactive elements */
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+select,
+a {
+  cursor: pointer !important;
+}
+
 @layer base {
   :root {
     --background: #191919;
@@ -20,10 +31,6 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
-  }
-
-  button {
-    cursor: pointer;
   }
 
   /* Custom Scrollbars - Notion style */
