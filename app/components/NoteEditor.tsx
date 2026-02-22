@@ -525,11 +525,6 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote }:
 
           {/* Chat messages */}
           <div className="flex-1 overflow-auto p-3 space-y-4">
-            {chatMessages.length === 0 && !chatError && (
-              <div className="text-center text-[#6b6b6b] text-xs py-6">
-                <p>Ask anything about this note.</p>
-              </div>
-            )}
             {chatError && (
               <div className="bg-red-500/10 text-red-400 text-xs px-3 py-2 rounded-lg">
                 {chatError}
