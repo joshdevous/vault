@@ -570,17 +570,18 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   };
 
   return (
-    <aside className="flex flex-col w-60 h-full bg-[#202020] border-r border-[#2f2f2f] shrink-0 select-none">
-      {/* Workspace header */}
-      <div className="px-2 py-2">
+    <aside className="flex flex-col w-60 h-full bg-[#191919] border-r border-[#2f2f2f] shrink-0 select-none">
+      {/* Workspace header - draggable for window movement */}
+      <div className="px-2 py-2" style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
         <div 
           className="flex items-center gap-2 px-2 py-1.5 hover:bg-[rgba(255,255,255,0.055)] rounded-[6px] cursor-pointer"
           onClick={onGoHome}
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <div className="w-5 h-5 rounded bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-xs font-medium text-white shrink-0">
             M
           </div>
-          <span className="text-sm font-medium text-[#7eb8f7] truncate">Mothership</span>
+          <span className="text-sm font-medium text-[#ebebeb] truncate">Mothership</span>
         </div>
       </div>
 
