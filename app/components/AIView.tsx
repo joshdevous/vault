@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
-import { AISettingsModal } from "./AISettingsModal";
+import { AISettingsModal, getEnabledModelIds } from "./AISettingsModal";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   createdAt: Date;
+  images?: string[]; // Base64 images (client-side only, not persisted)
 }
 
 interface ChatSession {
@@ -28,25 +29,14 @@ const OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
 const SELECTED_MODEL_STORAGE_KEY = "mothership-ai-model";
 const CURRENT_SESSION_STORAGE_KEY = "mothership-ai-current-session";
 
-// Model definitions - OpenRouter model IDs
+// Model info from OpenRouter
 interface ModelInfo {
   id: string;
   name: string;
   provider: string;
+  vision?: boolean;
+  imageGeneration?: boolean;
 }
-
-const ALL_MODELS: ModelInfo[] = [
-  { id: "openai/gpt-4o-mini", name: "GPT-4o mini", provider: "OpenAI" },
-  { id: "openai/gpt-4o", name: "GPT-4o", provider: "OpenAI" },
-  { id: "openai/gpt-4-turbo", name: "GPT-4 Turbo", provider: "OpenAI" },
-  { id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic" },
-  { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", provider: "Anthropic" },
-  { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", provider: "Google" },
-  { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", provider: "Google" },
-  { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B", provider: "Meta" },
-  { id: "deepseek/deepseek-chat", name: "DeepSeek V3", provider: "DeepSeek" },
-  { id: "mistralai/mistral-large-2411", name: "Mistral Large", provider: "Mistral" },
-];
 
 // Format relative time
 function formatRelativeTime(date: Date): string {
@@ -68,6 +58,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]); // Base64 encoded images
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +72,11 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const [selectedModelId, setSelectedModelId] = useState<string>(() => 
     typeof window !== "undefined" ? localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) || "openai/gpt-4o-mini" : "openai/gpt-4o-mini"
   );
+  const [enabledModels, setEnabledModels] = useState<ModelInfo[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelSelectorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get current session
   const currentSession = sessions.find((s) => s.id === currentSessionId);
@@ -91,6 +84,29 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
 
   // Get API key from localStorage
   const getApiKey = () => localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || "";
+
+  // Fetch enabled models from API
+  const fetchEnabledModels = useCallback(async () => {
+    const modelIds = getEnabledModelIds();
+    try {
+      const res = await fetch("/api/ai/models");
+      const data = await res.json();
+      const allModels = data.models || [];
+      // Filter to only enabled models, maintaining order from settings
+      const enabled = modelIds
+        .map((id: string) => allModels.find((m: ModelInfo) => m.id === id))
+        .filter(Boolean) as ModelInfo[];
+      setEnabledModels(enabled.length > 0 ? enabled : allModels.slice(0, 5));
+    } catch (err) {
+      console.error("Failed to fetch models:", err);
+      // Fallback to basic model info
+      setEnabledModels(modelIds.map((id: string) => ({
+        id,
+        name: id.split("/")[1] || id,
+        provider: id.split("/")[0] || "Unknown",
+      })));
+    }
+  }, []);
 
   // Fetch AI instructions from API
   const fetchInstructions = async () => {
@@ -104,7 +120,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   };
 
   // Get currently selected model
-  const selectedModel = ALL_MODELS.find(m => m.id === selectedModelId) || ALL_MODELS[0];
+  const selectedModel = enabledModels.find(m => m.id === selectedModelId) || enabledModels[0] || { id: selectedModelId, name: selectedModelId.split("/")[1] || selectedModelId, provider: selectedModelId.split("/")[0] || "Unknown" };
 
   // Handle model selection - switch to a new chat
   const handleSelectModel = (modelId: string) => {
@@ -129,10 +145,11 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
     }
   }, [showModelSelector]);
 
-  // Fetch instructions on mount
+  // Fetch instructions and models on mount
   useEffect(() => {
     fetchInstructions();
-  }, []);
+    fetchEnabledModels();
+  }, [fetchEnabledModels]);
 
   // Load sessions from database
   const loadSessions = useCallback(async () => {
@@ -237,8 +254,56 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
   };
 
+  // Handle file to base64 conversion
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle paste event for images
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const base64 = await fileToBase64(file);
+          setPendingImages(prev => [...prev, base64]);
+        }
+        break;
+      }
+    }
+  };
+
+  // Handle file input change
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (const file of files) {
+      if (file.type.startsWith("image/")) {
+        const base64 = await fileToBase64(file);
+        setPendingImages(prev => [...prev, base64]);
+      }
+    }
+    // Reset input so same file can be selected again
+    e.target.value = "";
+  };
+
+  // Remove pending image
+  const removePendingImage = (index: number) => {
+    setPendingImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && pendingImages.length === 0) || isLoading) return;
 
     // Check for API key
     const apiKey = getApiKey();
@@ -295,10 +360,15 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
       if (!userMsgResponse.ok) throw new Error("Failed to save message");
       const userMessage = await userMsgResponse.json();
 
-      // Update local state with user message
+      // Capture images before clearing
+      const imagesToSend = [...pendingImages];
+      setPendingImages([]); // Clear pending images after capturing them
+
+      // Update local state with user message (include images for display)
       const userMsg: Message = {
         ...userMessage,
         createdAt: new Date(userMessage.createdAt),
+        images: imagesToSend.length > 0 ? imagesToSend : undefined,
       };
       
       setSessions((prev) =>
@@ -311,10 +381,30 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
 
       // Build messages array for AI API
       const currentMessages = [...messages, userMsg];
-      const apiMessages = currentMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      
+      // Format messages for API - handle images for user messages
+      const apiMessages = currentMessages.map((m) => {
+        // If message has images, format as multimodal
+        if (m.role === "user" && m.images && m.images.length > 0) {
+          const content: Array<{type: string; text?: string; image_url?: {url: string}}> = [];
+          
+          // Add images first
+          for (const imgBase64 of m.images) {
+            content.push({
+              type: "image_url",
+              image_url: { url: imgBase64 }
+            });
+          }
+          
+          // Add text
+          if (m.content) {
+            content.push({ type: "text", text: m.content });
+          }
+          
+          return { role: m.role, content };
+        }
+        return { role: m.role, content: m.content };
+      });
 
       // Call AI API with streaming
       const aiResponse = await fetch("/api/ai/chat", {
@@ -700,27 +790,35 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                 </svg>
               </button>
               {showModelSelector && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-xl py-1 min-w-[180px] z-50">
-                  {ALL_MODELS.map((model) => (
+                <div className="absolute top-full left-0 mt-1 bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-xl py-1 w-max z-50">
+                  {enabledModels.map((model) => (
                     <button
                       key={model.id}
                       onClick={() => handleSelectModel(model.id)}
-                      className={`w-full px-3 py-1.5 text-left text-sm hover:bg-[#3f3f3f] transition-colors ${
+                      className={`w-full px-3 py-1.5 text-left text-sm hover:bg-[#3f3f3f] transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                         model.id === selectedModelId ? "text-[#7eb8f7]" : "text-[#e3e3e3]"
                       }`}
                     >
-                      <div>{model.name}</div>
-                      <div className="text-xs text-[#6b6b6b]">{model.provider}</div>
+                      {model.name}
+                      {model.vision && (
+                        <span title="Supports image input">
+                          <svg className="w-3.5 h-3.5 text-[#6b6b6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </span>
+                      )}
+                      {model.imageGeneration && (
+                        <span title="Generates images">
+                          <svg className="w-3.5 h-3.5 text-[#6b6b6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15l-5-5L5 21"/>
+                          </svg>
+                        </span>
+                      )}
                     </button>
                   ))}
-                  <div className="border-t border-[#3f3f3f] mt-1 pt-1">
-                    <button
-                      onClick={() => { setShowModelSelector(false); setShowSettings(true); }}
-                      className="w-full px-3 py-1.5 text-left text-xs text-[#9b9b9b] hover:bg-[#3f3f3f] transition-colors"
-                    >
-                      API settings...
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
@@ -743,6 +841,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
           onClose={() => {
             setShowSettings(false);
             fetchInstructions(); // Refresh instructions after settings change
+            fetchEnabledModels(); // Refresh models after settings change
           }}
         />
 
@@ -771,6 +870,18 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                 >
                   {message.role === "user" ? (
                     <div className="max-w-[80%] rounded-2xl px-4 py-2.5 bg-[#3f3f3f] text-[#e3e3e3]">
+                      {message.images && message.images.length > 0 && (
+                        <div className="flex gap-2 mb-2 flex-wrap">
+                          {message.images.map((img, imgIndex) => (
+                            <img
+                              key={imgIndex}
+                              src={img}
+                              alt={`Attachment ${imgIndex + 1}`}
+                              className="max-h-48 max-w-full rounded-lg object-contain"
+                            />
+                          ))}
+                        </div>
+                      )}
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
                   ) : (
@@ -831,12 +942,57 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         {/* Input area */}
         <div>
           <div className="max-w-3xl mx-auto px-4 py-9">
+            {/* Image preview */}
+            {pendingImages.length > 0 && (
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {pendingImages.map((img, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={img}
+                      alt={`Upload ${index + 1}`}
+                      className="h-16 w-16 object-cover rounded-md border border-[#3f3f3f]"
+                    />
+                    <button
+                      onClick={() => removePendingImage(index)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#dc2626] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove image"
+                    >
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2 items-end bg-[#252525] rounded-lg border border-[#3f3f3f] p-2">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              {/* Image upload button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 rounded-md text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] transition-colors"
+                title="Add image (or Ctrl+V to paste)"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15l-5-5L5 21"/>
+                </svg>
+              </button>
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 placeholder="Ask anything..."
                 rows={1}
                 className="flex-1 bg-transparent text-[#e3e3e3] placeholder-[#6b6b6b] resize-none outline-none text-sm px-2 py-1"
@@ -844,7 +1000,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
               />
               <button
                 onClick={handleSend}
-                disabled={!input.trim() || isLoading}
+                disabled={(!input.trim() && pendingImages.length === 0) || isLoading}
                 className="p-2 rounded-md bg-[#4f4f4f] hover:bg-[#5f5f5f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-4 h-4 text-[#e3e3e3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -853,7 +1009,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
               </button>
             </div>
             <p className="text-xs text-[#6b6b6b] mt-4 text-center">
-              <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Enter</kbd> send, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Shift+Enter</kbd> new line, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Ctrl+N</kbd> new chat
+              <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Enter</kbd> send, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Shift+Enter</kbd> new line, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Ctrl+N</kbd> new chat, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Ctrl+V</kbd> paste image
             </p>
           </div>
         </div>
