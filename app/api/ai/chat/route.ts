@@ -102,7 +102,17 @@ export async function POST(request: NextRequest) {
 
     // Get the last user message for context search
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
-    const contextQuery = lastUserMessage?.content || "";
+    // Handle multimodal content (array) vs plain text (string)
+    let contextQuery = "";
+    if (lastUserMessage?.content) {
+      if (typeof lastUserMessage.content === "string") {
+        contextQuery = lastUserMessage.content;
+      } else if (Array.isArray(lastUserMessage.content)) {
+        // Extract text from multimodal content array
+        const textPart = lastUserMessage.content.find((p: { type: string; text?: string }) => p.type === "text");
+        contextQuery = textPart?.text || "";
+      }
+    }
 
     // Get relevant context from notes/vault/memories
     const relevantContext = await getRelevantContext(contextQuery);
