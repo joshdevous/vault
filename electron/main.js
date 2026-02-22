@@ -5,6 +5,12 @@ const path = require("path");
 const isDev = !app.isPackaged;
 if (!isDev) {
   process.env.NODE_ENV = "production";
+  // Prevent Next.js from trying to compile TypeScript config
+  process.env.NEXT_PRIVATE_STANDALONE = "1";
+  // Disable telemetry
+  process.env.NEXT_TELEMETRY_DISABLED = "1";
+  // Skip type checking
+  process.env.NEXT_DISABLE_SWC_WASM = "1";
 }
 
 // Hide console window on Windows in production
