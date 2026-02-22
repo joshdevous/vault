@@ -74,6 +74,9 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [blurTitles, setBlurTitles] = useState<boolean>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("mothership-blur-titles") === "true" : false
+  );
   const [selectedModelId, setSelectedModelId] = useState<string>(() => 
     typeof window !== "undefined" ? localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) || "openai/gpt-4o-mini" : "openai/gpt-4o-mini"
   );
@@ -463,15 +466,34 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
           {/* Sidebar header */}
           <div className="h-11 px-3 flex items-center justify-between border-b border-[#2f2f2f]">
             <span className="text-xs text-[#9b9b9b] font-medium">Chat History</span>
-            <button
-              onClick={createNewSession}
-              className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
-              title="New chat"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  const newValue = !blurTitles;
+                  setBlurTitles(newValue);
+                  localStorage.setItem("mothership-blur-titles", String(newValue));
+                }}
+                className={`p-1 rounded transition-colors ${blurTitles ? "text-[#7eb8f7] bg-[#3f3f3f]" : "text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f]"}`}
+                title={blurTitles ? "Show titles" : "Hide titles"}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {blurTitles ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  )}
+                </svg>
+              </button>
+              <button
+                onClick={createNewSession}
+                className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+                title="New chat"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
           </div>
           
           {/* Session list */}
@@ -495,7 +517,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                       : "text-[#9b9b9b] hover:bg-[#2f2f2f]"
                   }`}
                 >
-                  <span className="text-sm truncate flex-1">{session.title}</span>
+                  <span className={`text-sm truncate flex-1 ${blurTitles ? "blur-sm select-none" : ""}`}>{session.title}</span>
                   {/* <span className="text-xs text-[#6b6b6b] shrink-0">{formatRelativeTime(session.updatedAt)}</span> */}
                   <button
                     onClick={(e) => {
@@ -520,7 +542,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         {/* Top bar */}
         <div className="flex items-center justify-between h-11 px-3 border-b border-[#2f2f2f] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-[#9b9b9b]">{currentSession?.title || "AI Chat"}</span>
+            <span className={`text-sm text-[#9b9b9b] ${blurTitles ? "blur-sm select-none" : ""}`}>{currentSession?.title || "AI Chat"}</span>
             {/* Model selector */}
             <div className="relative" ref={modelSelectorRef}>
               <button
@@ -615,7 +637,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                           onClick={() => {
                             navigator.clipboard.writeText(message.content);
                             setCopiedMessageId(message.id);
-                            setTimeout(() => setCopiedMessageId(null), 1500);
+                            setTimeout(() => setCopiedMessageId(null), 400);
                           }}
                           className={`transition-colors ${copiedMessageId === message.id ? "text-green-400" : "text-[#6b6b6b] hover:text-[#ebebeb]"}`}
                           title="Copy"
