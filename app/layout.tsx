@@ -24,6 +24,7 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <div className="flex flex-col h-screen w-screen overflow-hidden">
           <TitleBar />
+          <div className="h-px bg-[#2f2f2f] shrink-0" />
           <AppShell />
         </div>
       </body>

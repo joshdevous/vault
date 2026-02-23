@@ -1,13 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export function TitleBar() {
-  const [isElectron, setIsElectron] = useState(false);
-
-  useEffect(() => {
-    setIsElectron(!!window.electronAPI);
-  }, []);
+  const [isElectron] = useState(() => typeof window !== "undefined" && !!window.electronAPI);
 
   const handleMinimize = () => {
     window.electronAPI?.minimize();
