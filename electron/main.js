@@ -6,6 +6,7 @@ const { readFile, writeFile } = require("fs/promises");
 const isDev = !app.isPackaged;
 if (!isDev) {
   process.env.NODE_ENV = "production";
+  process.env.MOTHERSHIP_DATA_DIR = path.join(app.getPath("appData"), "Mothership");
   // Prevent Next.js from trying to compile TypeScript config
   process.env.NEXT_PRIVATE_STANDALONE = "1";
   // Disable telemetry

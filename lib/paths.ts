@@ -5,6 +5,14 @@ import { existsSync, mkdirSync } from "fs";
 // In development: use project folder
 // In production: use user's app data folder
 export function getDataDir(): string {
+  const explicitDataDir = process.env.MOTHERSHIP_DATA_DIR?.trim();
+  if (explicitDataDir) {
+    if (!existsSync(explicitDataDir)) {
+      mkdirSync(explicitDataDir, { recursive: true });
+    }
+    return explicitDataDir;
+  }
+
   // Check if we're in a packaged Electron app using environment variable set by main.js
   const isPackaged = process.env.NEXT_PRIVATE_STANDALONE === "1";
   
