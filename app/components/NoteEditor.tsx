@@ -430,7 +430,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
     content: note.content,
     editorProps: {
       attributes: {
-        class: "prose prose-invert max-w-none focus:outline-none min-h-[120px] text-[#e3e3e3] text-base leading-relaxed",
+        class: "prose prose-invert max-w-none focus:outline-none h-full min-h-[120px] text-[#e3e3e3] text-base leading-relaxed",
       },
       handlePaste: (view, event) => {
         const clipboard = event.clipboardData;
@@ -805,7 +805,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
         {/* Editor content */}
         <div className="flex-1 overflow-auto">
-          <div className="max-w-3xl mx-auto px-16 py-12">
+          <div className="max-w-3xl mx-auto px-16 py-12 h-full flex flex-col">
             {/* Title */}
             <input
               type="text"
@@ -841,7 +841,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
             )}
 
             {/* Rich Text Editor */}
-            <EditorContent editor={editor} />
+            <EditorContent editor={editor} className="flex-1" />
           </div>
         </div>
       </div>
