@@ -151,7 +151,7 @@ app.whenReady().then(async () => {
   await startNextServer();
   createWindow();
 
-  const registered = globalShortcut.register("CommandOrControl+N", () => {
+  const registered = globalShortcut.register("CommandOrControl+Q", () => {
     if (!mainWindow) {
       return;
     }
@@ -169,7 +169,7 @@ app.whenReady().then(async () => {
   });
 
   if (!registered) {
-    console.error("Failed to register global shortcut: CommandOrControl+N");
+    console.error("Failed to register global shortcut: CommandOrControl+Q");
   }
 
   app.on("activate", () => {
