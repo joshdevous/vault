@@ -49,6 +49,24 @@ function parseImageWidth(value: unknown): number | null {
   return null;
 }
 
+function buildUploadFilename(file: Blob & { name?: string }, prefix: string): string {
+  const rawName = typeof file.name === "string" ? file.name.trim() : "";
+  if (rawName.length > 0) {
+    return rawName;
+  }
+
+  const mime = typeof file.type === "string" ? file.type.toLowerCase() : "";
+  let ext = "png";
+  if (mime === "image/jpeg") ext = "jpg";
+  else if (mime === "image/gif") ext = "gif";
+  else if (mime === "image/webp") ext = "webp";
+  else if (mime === "image/svg+xml") ext = "svg";
+  else if (mime === "image/bmp") ext = "bmp";
+  else if (mime === "image/avif") ext = "avif";
+
+  return `${prefix}-${Date.now()}.${ext}`;
+}
+
 const NoteImage = Image.extend({
   addAttributes() {
     return {
@@ -240,22 +258,66 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
   const uploadNoteImage = useCallback(async (file: File): Promise<string | null> => {
     try {
-      const formData = new FormData();
-      formData.append("image", file);
+      console.log("[notes:image-upload][client] upload:start", {
+        noteId: note.id,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+
+      const uploadFilename = buildUploadFilename(file, "note-image");
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 1) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      console.log("[notes:image-upload][client] upload:filename", {
+        noteId: note.id,
+        uploadFilename,
+        mimeType: file.type,
+        base64Length: base64.length,
+      });
 
       const res = await fetch(`/api/notes/${note.id}/images`, {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          base64,
+          mimeType: file.type,
+          ext: uploadFilename.split(".").pop()?.toLowerCase() ?? "png",
+          originalName: uploadFilename,
+        }),
       });
 
       if (!res.ok) {
+        const responseText = await res.text().catch(() => "<failed to read response body>");
+        console.error("[notes:image-upload][client] upload:failed", {
+          noteId: note.id,
+          status: res.status,
+          statusText: res.statusText,
+          responseText,
+        });
         return null;
       }
 
       const data = await res.json();
+      console.log("[notes:image-upload][client] upload:success", {
+        noteId: note.id,
+        url: data.url,
+        filename: data.filename,
+        requestId: data.requestId,
+      });
       return data.url || null;
     } catch (error) {
-      console.error("Failed to upload note image:", error);
+      console.error("[notes:image-upload][client] upload:error", {
+        noteId: note.id,
+        error,
+      });
       return null;
     }
   }, [note.id]);
