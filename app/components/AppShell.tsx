@@ -146,6 +146,28 @@ export function AppShell() {
     };
   }, [handleCreateNote]);
 
+  useEffect(() => {
+    const handleWebShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable;
+
+      if (isTypingTarget) {
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "q") {
+        event.preventDefault();
+        void handleCreateNote();
+      }
+    };
+
+    window.addEventListener("keydown", handleWebShortcut);
+    return () => window.removeEventListener("keydown", handleWebShortcut);
+  }, [handleCreateNote]);
+
   // Select note
   const handleSelectNote = (id: string) => {
     setSelectedNoteId(id);
