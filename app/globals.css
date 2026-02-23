@@ -79,15 +79,17 @@ a {
   margin: 0 !important;
 }
 
-.tiptap > p.is-editor-empty:first-child::before {
-  content: "Start typing...";
+.tiptap p.is-editor-empty:first-child::before,
+.tiptap p.is-empty::before {
+  content: attr(data-placeholder);
   color: #4a4a4a;
   pointer-events: none;
   float: left;
   height: 0;
 }
 
-.tiptap:focus-within > p.is-editor-empty:first-child::before {
+.tiptap:focus-within p.is-editor-empty:first-child::before,
+.tiptap:focus-within p.is-empty::before {
   content: "";
 }
 
