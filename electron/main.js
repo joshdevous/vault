@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require("electron");
 const path = require("path");
+const { readFile, writeFile } = require("fs/promises");
 
 // Set NODE_ENV early to prevent TypeScript installation attempts
 const isDev = !app.isPackaged;
@@ -28,8 +29,64 @@ if (!isDev && process.platform === "win32") {
 let mainWindow;
 let quickNoteWindow;
 let server;
+let quickNoteBoundsSaveTimeout;
 
 const PORT = isDev ? 3000 : 51333;
+
+function getQuickNoteBoundsFilePath() {
+  return path.join(app.getPath("userData"), "quick-note-window.json");
+}
+
+async function loadQuickNoteBounds() {
+  try {
+    const raw = await readFile(getQuickNoteBoundsFilePath(), "utf8");
+    const parsed = JSON.parse(raw);
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof parsed.width !== "number" ||
+      typeof parsed.height !== "number"
+    ) {
+      return null;
+    }
+
+    return {
+      width: Math.max(320, Math.round(parsed.width)),
+      height: Math.max(260, Math.round(parsed.height)),
+      ...(typeof parsed.x === "number" ? { x: Math.round(parsed.x) } : {}),
+      ...(typeof parsed.y === "number" ? { y: Math.round(parsed.y) } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveQuickNoteBounds(bounds) {
+  try {
+    await writeFile(getQuickNoteBoundsFilePath(), JSON.stringify(bounds), "utf8");
+  } catch (error) {
+    console.error("Failed to save quick note bounds:", error);
+  }
+}
+
+function scheduleSaveQuickNoteBounds() {
+  if (!quickNoteWindow || quickNoteWindow.isDestroyed()) {
+    return;
+  }
+
+  if (quickNoteBoundsSaveTimeout) {
+    clearTimeout(quickNoteBoundsSaveTimeout);
+  }
+
+  quickNoteBoundsSaveTimeout = setTimeout(() => {
+    if (!quickNoteWindow || quickNoteWindow.isDestroyed()) {
+      return;
+    }
+    const bounds = quickNoteWindow.getBounds();
+    void saveQuickNoteBounds(bounds);
+  }, 200);
+}
 
 function escapeHtml(value) {
   return value
@@ -79,7 +136,7 @@ async function apiRequest(pathname, options = {}) {
   return response.json();
 }
 
-function createQuickNoteWindow() {
+async function createQuickNoteWindow() {
   if (quickNoteWindow && !quickNoteWindow.isDestroyed()) {
     if (quickNoteWindow.isMinimized()) {
       quickNoteWindow.restore();
@@ -89,9 +146,13 @@ function createQuickNoteWindow() {
     return;
   }
 
+  const savedBounds = await loadQuickNoteBounds();
+
   quickNoteWindow = new BrowserWindow({
-    width: 380,
-    height: 420,
+    width: savedBounds?.width ?? 380,
+    height: savedBounds?.height ?? 420,
+    ...(savedBounds?.x !== undefined ? { x: savedBounds.x } : {}),
+    ...(savedBounds?.y !== undefined ? { y: savedBounds.y } : {}),
     minWidth: 320,
     minHeight: 260,
     backgroundColor: "#202020",
@@ -107,7 +168,20 @@ function createQuickNoteWindow() {
 
   quickNoteWindow.loadFile(path.join(__dirname, "quick-note.html"));
 
+  quickNoteWindow.on("move", scheduleSaveQuickNoteBounds);
+  quickNoteWindow.on("resize", scheduleSaveQuickNoteBounds);
+
   quickNoteWindow.on("closed", () => {
+    if (quickNoteBoundsSaveTimeout) {
+      clearTimeout(quickNoteBoundsSaveTimeout);
+      quickNoteBoundsSaveTimeout = null;
+    }
+
+    const lastBounds = quickNoteWindow?.getBounds();
+    if (lastBounds) {
+      void saveQuickNoteBounds(lastBounds);
+    }
+
     quickNoteWindow = null;
   });
 }
@@ -279,7 +353,7 @@ app.whenReady().then(async () => {
   createWindow();
 
   const registered = globalShortcut.register("CommandOrControl+Q", () => {
-    createQuickNoteWindow();
+    void createQuickNoteWindow();
   });
 
   if (!registered) {
