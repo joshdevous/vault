@@ -147,6 +147,10 @@ export function AppShell() {
   }, [handleCreateNote]);
 
   useEffect(() => {
+    if (window.electronAPI) {
+      return;
+    }
+
     const handleWebShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTypingTarget =

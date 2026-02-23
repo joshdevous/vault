@@ -26,9 +26,136 @@ if (!isDev && process.platform === "win32") {
 }
 
 let mainWindow;
+let quickNoteWindow;
 let server;
 
 const PORT = isDev ? 3000 : 51333;
+
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function toNoteHtml(text) {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const html = lines
+    .map((line) => `<p>${line.length > 0 ? escapeHtml(line) : "<br>"}</p>`)
+    .join("");
+  return html || "<p><br></p>";
+}
+
+function toNoteTitle(text) {
+  const firstLine = text
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+
+  if (!firstLine) {
+    return "";
+  }
+
+  return firstLine.slice(0, 120);
+}
+
+async function apiRequest(pathname, options = {}) {
+  const response = await fetch(`http://localhost:${PORT}${pathname}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`API ${response.status}: ${body || response.statusText}`);
+  }
+
+  return response.json();
+}
+
+function createQuickNoteWindow() {
+  if (quickNoteWindow && !quickNoteWindow.isDestroyed()) {
+    if (quickNoteWindow.isMinimized()) {
+      quickNoteWindow.restore();
+    }
+    quickNoteWindow.show();
+    quickNoteWindow.focus();
+    return;
+  }
+
+  quickNoteWindow = new BrowserWindow({
+    width: 380,
+    height: 420,
+    minWidth: 320,
+    minHeight: 260,
+    backgroundColor: "#202020",
+    title: "Quick Note",
+    autoHideMenuBar: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  quickNoteWindow.loadFile(path.join(__dirname, "quick-note.html"));
+
+  quickNoteWindow.on("closed", () => {
+    quickNoteWindow = null;
+  });
+}
+
+ipcMain.handle("quick-note-create", async (_event, payload) => {
+  const text = typeof payload?.text === "string" ? payload.text : "";
+
+  if (!text.trim()) {
+    throw new Error("Cannot create empty quick note");
+  }
+
+  const created = await apiRequest("/api/notes", {
+    method: "POST",
+    body: JSON.stringify({ parentId: null }),
+  });
+
+  const noteId = created.id;
+  const updated = await apiRequest(`/api/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: toNoteTitle(text),
+      content: toNoteHtml(text),
+    }),
+  });
+
+  return updated;
+});
+
+ipcMain.handle("quick-note-update", async (_event, payload) => {
+  const noteId = typeof payload?.noteId === "string" ? payload.noteId : "";
+  const text = typeof payload?.text === "string" ? payload.text : "";
+
+  if (!noteId) {
+    throw new Error("Missing note id");
+  }
+
+  return apiRequest(`/api/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: toNoteTitle(text),
+      content: toNoteHtml(text),
+    }),
+  });
+});
+
+ipcMain.on("quick-note-close", () => {
+  quickNoteWindow?.close();
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -152,20 +279,7 @@ app.whenReady().then(async () => {
   createWindow();
 
   const registered = globalShortcut.register("CommandOrControl+Q", () => {
-    if (!mainWindow) {
-      return;
-    }
-
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore();
-    }
-
-    if (!mainWindow.isVisible()) {
-      mainWindow.show();
-    }
-
-    mainWindow.focus();
-    mainWindow.webContents.send("global-create-note");
+    createQuickNoteWindow();
   });
 
   if (!registered) {

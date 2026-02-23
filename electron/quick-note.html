@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quick Note</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #202020;
+        color: #e3e3e3;
+      }
+
+      .container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        border-bottom: 1px solid #2f2f2f;
+        color: #9b9b9b;
+        font-size: 12px;
+      }
+
+      .close {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: #8a8a8a;
+        cursor: pointer;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+      }
+
+      .close:hover {
+        background: #2f2f2f;
+        color: #d4d4d4;
+      }
+
+      textarea {
+        flex: 1;
+        width: 100%;
+        border: 0;
+        outline: none;
+        resize: none;
+        background: transparent;
+        color: #e3e3e3;
+        font-size: 15px;
+        line-height: 1.5;
+        padding: 14px 14px 10px;
+      }
+
+      textarea::placeholder {
+        color: #5f5f5f;
+      }
+
+      .footer {
+        height: 26px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border-top: 1px solid #2f2f2f;
+        color: #6f6f6f;
+        font-size: 11px;
+      }
+
+      .footer.error {
+        color: #d06161;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <span>Quick Note</span>
+        <button class="close" id="closeButton" title="Close">✕</button>
+      </div>
+      <textarea id="quickInput" placeholder="Start typing…"></textarea>
+      <div class="footer" id="status">Ready</div>
+    </div>
+
+    <script src="./quick-note.js"></script>
+  </body>
+</html>

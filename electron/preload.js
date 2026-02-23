@@ -26,6 +26,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.removeListener("global-create-note", listener);
     };
   },
+
+  // Quick note window
+  quickNoteCreate: (text) => ipcRenderer.invoke("quick-note-create", { text }),
+  quickNoteUpdate: (noteId, text) => ipcRenderer.invoke("quick-note-update", { noteId, text }),
+  closeQuickNote: () => ipcRenderer.send("quick-note-close"),
   
   // Add more IPC methods here as needed
 });
