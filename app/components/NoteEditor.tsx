@@ -430,7 +430,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
     content: note.content,
     editorProps: {
       attributes: {
-        class: "prose prose-invert max-w-none focus:outline-none min-h-[calc(100vh-250px)] text-[#e3e3e3] text-base leading-relaxed",
+        class: "prose prose-invert max-w-none focus:outline-none min-h-[120px] text-[#e3e3e3] text-base leading-relaxed",
       },
       handlePaste: (view, event) => {
         const clipboard = event.clipboardData;
