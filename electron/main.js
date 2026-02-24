@@ -333,7 +333,7 @@ async function createQuickNoteWindow() {
 
 async function createQuickAiWindow() {
   const window = new BrowserWindow({
-    width: 560,
+    width: 520,
     height: 640,
     minWidth: 420,
     minHeight: 420,
@@ -513,6 +513,102 @@ ipcMain.handle("quick-ai-chat", async (_event, payload) => {
 
   const content = await response.text();
   return { content: content.trim() };
+});
+
+ipcMain.on("quick-ai-chat-stream", async (event, payload) => {
+  const requestId = typeof payload?.requestId === "string" ? payload.requestId : "";
+  const incomingMessages = Array.isArray(payload?.messages) ? payload.messages : [];
+
+  if (!requestId) {
+    event.sender.send("quick-ai-stream", {
+      requestId,
+      type: "error",
+      message: "Missing request id",
+    });
+    return;
+  }
+
+  const messages = incomingMessages
+    .map((message) => ({
+      role: message?.role === "assistant" ? "assistant" : "user",
+      content: typeof message?.content === "string" ? message.content : "",
+    }))
+    .filter((message) => message.content.trim().length > 0);
+
+  if (messages.length === 0) {
+    event.sender.send("quick-ai-stream", {
+      requestId,
+      type: "error",
+      message: "No messages provided",
+    });
+    return;
+  }
+
+  try {
+    const apiKey = await getOpenRouterApiKeyFromMainWindow();
+    if (!apiKey) {
+      throw new Error("Please set your OpenRouter API key in AI Settings.");
+    }
+
+    const model = await getSelectedModelFromMainWindow();
+    const response = await fetch(`http://localhost:${PORT}/api/ai/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages,
+        apiKey,
+        model,
+        instructions: [],
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(body || `AI request failed (${response.status})`);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error("No response stream available");
+    }
+
+    let fullContent = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      const chunk = decoder.decode(value, { stream: true });
+      if (!chunk) {
+        continue;
+      }
+
+      fullContent += chunk;
+      event.sender.send("quick-ai-stream", {
+        requestId,
+        type: "chunk",
+        chunk,
+      });
+    }
+
+    event.sender.send("quick-ai-stream", {
+      requestId,
+      type: "end",
+      content: fullContent.trim(),
+    });
+  } catch (error) {
+    event.sender.send("quick-ai-stream", {
+      requestId,
+      type: "error",
+      message: error instanceof Error ? error.message : "Failed to stream AI response",
+    });
+  }
 });
 
 ipcMain.handle("quick-ai-save", async (_event, payload) => {

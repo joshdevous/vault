@@ -51,9 +51,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Quick AI window
   openQuickAi: () => ipcRenderer.send("quick-ai-open"),
   quickAiChat: (messages) => ipcRenderer.invoke("quick-ai-chat", { messages }),
+  quickAiChatStream: (requestId, messages) => ipcRenderer.send("quick-ai-chat-stream", { requestId, messages }),
   quickAiSave: (messages) => ipcRenderer.invoke("quick-ai-save", { messages }),
   quickAiTrash: (sessionId) => ipcRenderer.send("quick-ai-trash", { sessionId }),
   closeQuickAi: () => ipcRenderer.send("quick-ai-close"),
+  onQuickAiStream: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("quick-ai-stream", listener);
+
+    return () => {
+      ipcRenderer.removeListener("quick-ai-stream", listener);
+    };
+  },
   
   // Add more IPC methods here as needed
 });

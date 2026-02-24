@@ -11,6 +11,30 @@
 
       * {
         box-sizing: border-box;
+        scrollbar-width: thin;
+        scrollbar-color: #474747 transparent;
+      }
+
+      *::-webkit-scrollbar {
+        width: 14px;
+        height: 14px;
+      }
+
+      *::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      *::-webkit-scrollbar-thumb {
+        background: #474747;
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+
+      *::-webkit-scrollbar-thumb:hover {
+        background: #5a5a5a;
+        border: 2px solid transparent;
+        background-clip: padding-box;
       }
 
       html,
@@ -109,9 +133,41 @@
       }
 
       .assistant-text {
-        white-space: pre-wrap;
-        line-height: 1.6;
         color: #e3e3e3;
+        line-height: 1.6;
+      }
+
+      .assistant-text > *:first-child { margin-top: 0; }
+      .assistant-text > *:last-child { margin-bottom: 0; }
+      .assistant-text p { margin: 8px 0; white-space: pre-wrap; }
+      .assistant-text ul,
+      .assistant-text ol { margin: 8px 0; padding-left: 20px; }
+      .assistant-text li { margin: 2px 0; }
+      .assistant-text code {
+        background: #2a2a2a;
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #7eb8f7;
+      }
+      .assistant-text pre {
+        background: #2a2a2a;
+        padding: 10px;
+        border-radius: 10px;
+        overflow-x: auto;
+        margin: 8px 0;
+      }
+      .assistant-text pre code {
+        background: transparent;
+        color: #e3e3e3;
+        padding: 0;
+      }
+      .assistant-text strong { color: #fff; }
+      .assistant-text a { color: #7eb8f7; text-decoration: underline; }
+      .assistant-text blockquote {
+        border-left: 3px solid #474747;
+        margin: 8px 0;
+        padding-left: 10px;
+        color: #9b9b9b;
       }
 
       .assistant-actions {
@@ -161,7 +217,6 @@
 
       .composer {
         padding: 10px;
-        border-top: 1px solid #2f2f2f;
       }
 
       .composer-inner {
@@ -187,6 +242,9 @@
         font-family: inherit;
         line-height: 1.45;
         max-height: 180px;
+        padding: 6px 8px;
+        margin: 0;
+        display: block;
       }
 
       textarea::placeholder {

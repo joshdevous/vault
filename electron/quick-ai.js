@@ -11,6 +11,8 @@ const state = {
   loading: false,
   copiedMessageId: null,
   savedSessionId: null,
+  streamRequestId: null,
+  streamCleanup: null,
 };
 
 function makeId() {
@@ -24,6 +26,107 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function renderInlineMarkdown(value) {
+  let result = escapeHtml(value);
+  result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
+  result = result.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  result = result.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  result = result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2">$1</a>');
+  return result;
+}
+
+function renderMarkdown(value) {
+  const lines = value.replace(/\r\n/g, "\n").split("\n");
+  const blocks = [];
+  let inUl = false;
+  let inOl = false;
+  let inCode = false;
+  let codeLines = [];
+
+  const closeLists = () => {
+    if (inUl) {
+      blocks.push("</ul>");
+      inUl = false;
+    }
+    if (inOl) {
+      blocks.push("</ol>");
+      inOl = false;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("```")) {
+      if (inCode) {
+        blocks.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+        codeLines = [];
+        inCode = false;
+      } else {
+        closeLists();
+        inCode = true;
+      }
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!trimmed) {
+      closeLists();
+      continue;
+    }
+
+    const blockquoteMatch = trimmed.match(/^>\s?(.*)$/);
+    if (blockquoteMatch) {
+      closeLists();
+      blocks.push(`<blockquote>${renderInlineMarkdown(blockquoteMatch[1])}</blockquote>`);
+      continue;
+    }
+
+    const ulMatch = trimmed.match(/^[-*+]\s+(.+)$/);
+    if (ulMatch) {
+      if (inOl) {
+        blocks.push("</ol>");
+        inOl = false;
+      }
+      if (!inUl) {
+        blocks.push("<ul>");
+        inUl = true;
+      }
+      blocks.push(`<li>${renderInlineMarkdown(ulMatch[1])}</li>`);
+      continue;
+    }
+
+    const olMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (olMatch) {
+      if (inUl) {
+        blocks.push("</ul>");
+        inUl = false;
+      }
+      if (!inOl) {
+        blocks.push("<ol>");
+        inOl = true;
+      }
+      blocks.push(`<li>${renderInlineMarkdown(olMatch[1])}</li>`);
+      continue;
+    }
+
+    closeLists();
+    blocks.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+  }
+
+  if (inCode) {
+    blocks.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+  }
+
+  closeLists();
+  return blocks.join("");
 }
 
 function setError(message) {
@@ -61,7 +164,7 @@ function render() {
 
     html.push(`
       <div class="assistant-wrap">
-        <div class="assistant-text">${escapeHtml(message.content)}</div>
+        <div class="assistant-text">${renderMarkdown(message.content)}</div>
         ${showActions ? `
           <div class="assistant-actions">
             <button class="assistant-action ${state.copiedMessageId === message.id ? "copied" : ""}" data-action="copy" data-id="${message.id}" title="Copy" aria-label="Copy">
@@ -91,22 +194,76 @@ function render() {
 }
 
 async function generateAssistantReply(sourceMessages) {
+  if (state.streamCleanup) {
+    state.streamCleanup();
+    state.streamCleanup = null;
+  }
+
   setLoading(true);
   setError("");
 
   try {
     const payload = sourceMessages.map((message) => ({ role: message.role, content: message.content }));
-    const response = await window.electronAPI.quickAiChat(payload);
-    const content = (response?.content || "").trim();
-    if (!content) {
-      throw new Error("No response generated");
-    }
-
-    state.messages.push({ id: makeId(), role: "assistant", content });
+    const tempAssistantId = makeId();
+    state.messages.push({ id: tempAssistantId, role: "assistant", content: "" });
     render();
+
+    const requestId = makeId();
+    state.streamRequestId = requestId;
+
+    const streamDone = new Promise((resolve, reject) => {
+      const unsubscribe = window.electronAPI.onQuickAiStream((eventPayload) => {
+        if (!eventPayload || eventPayload.requestId !== requestId) {
+          return;
+        }
+
+        if (eventPayload.type === "chunk") {
+          const chunk = eventPayload.chunk || "";
+          state.messages = state.messages.map((message) =>
+            message.id === tempAssistantId
+              ? { ...message, content: `${message.content}${chunk}` }
+              : message
+          );
+          render();
+          return;
+        }
+
+        if (eventPayload.type === "end") {
+          const finalContent = (eventPayload.content || "").trim();
+          state.messages = state.messages.map((message) =>
+            message.id === tempAssistantId
+              ? { ...message, content: finalContent }
+              : message
+          );
+          render();
+          unsubscribe();
+          resolve(undefined);
+          return;
+        }
+
+        if (eventPayload.type === "error") {
+          state.messages = state.messages.filter((message) => message.id !== tempAssistantId);
+          render();
+          unsubscribe();
+          reject(new Error(eventPayload.message || "Failed to stream AI response"));
+        }
+      });
+
+      state.streamCleanup = () => {
+        unsubscribe();
+      };
+    });
+
+    window.electronAPI.quickAiChatStream(requestId, payload);
+    await streamDone;
   } catch (error) {
     setError(error instanceof Error ? error.message : "Failed to get AI response");
   } finally {
+    state.streamRequestId = null;
+    if (state.streamCleanup) {
+      state.streamCleanup();
+      state.streamCleanup = null;
+    }
     setLoading(false);
   }
 }
