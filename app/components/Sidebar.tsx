@@ -115,7 +115,10 @@ function NoteIcon({ icon, hasContent }: { icon: string; hasContent: boolean }) {
   // Emoji icon (any non-default value that's not an image)
   if (icon && icon !== "📄") {
     return (
-      <span className="w-4 h-4 shrink-0 text-sm leading-none flex items-center justify-center">
+      <span
+        className="w-4 h-4 shrink-0 text-sm leading-none flex items-center justify-center text-[#ebebeb] opacity-100"
+        style={{ fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}
+      >
         {icon}
       </span>
     );
