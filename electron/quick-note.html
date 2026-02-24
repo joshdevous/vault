@@ -27,37 +27,7 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        border: 1px solid #2f2f2f;
-      }
-
-      .header {
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 12px;
-        border-bottom: 1px solid #2f2f2f;
-        color: #7eb8f7;
-        font-size: 12px;
-        font-weight: 500;
-        background: #202020;
-      }
-
-      .close {
-        appearance: none;
-        border: none;
-        background: transparent;
-        color: #7c7c7c;
-        cursor: pointer;
-        width: 24px;
-        height: 24px;
-        border-radius: 6px;
-        font-size: 13px;
-      }
-
-      .close:hover {
-        background: #2f2f2f;
-        color: #ebebeb;
+        border-top: 1px solid #2f2f2f;
       }
 
       textarea {
@@ -69,6 +39,8 @@
         background: transparent;
         color: #e3e3e3;
         font-size: 16px;
+        font-family: inherit;
+        font-weight: 400;
         line-height: 1.5;
         padding: 16px;
       }
@@ -77,30 +49,11 @@
         color: #4a4a4a;
       }
 
-      .footer {
-        height: 28px;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        border-top: 1px solid #2f2f2f;
-        color: #6b6b6b;
-        font-size: 11px;
-        background: #202020;
-      }
-
-      .footer.error {
-        color: #d06161;
-      }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <span>Quick Note</span>
-        <button class="close" id="closeButton" title="Close">✕</button>
-      </div>
       <textarea id="quickInput" placeholder="Start typing…"></textarea>
-      <div class="footer" id="status">Ready</div>
     </div>
 
     <script src="./quick-note.js"></script>

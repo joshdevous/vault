@@ -98,12 +98,85 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function renderInlineMarkdown(value) {
+  let result = escapeHtml(value);
+  result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
+  result = result.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  result = result.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  result = result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2">$1</a>');
+  return result;
+}
+
 function toNoteHtml(text) {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const html = lines
-    .map((line) => `<p>${line.length > 0 ? escapeHtml(line) : "<br>"}</p>`)
-    .join("");
-  return html || "<p><br></p>";
+
+  const blocks = [];
+  let inUl = false;
+  let inOl = false;
+
+  const closeLists = () => {
+    if (inUl) {
+      blocks.push("</ul>");
+      inUl = false;
+    }
+    if (inOl) {
+      blocks.push("</ol>");
+      inOl = false;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      closeLists();
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      closeLists();
+      const level = headingMatch[1].length;
+      blocks.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    const ulMatch = trimmed.match(/^[-*+]\s+(.+)$/);
+    if (ulMatch) {
+      if (inOl) {
+        blocks.push("</ol>");
+        inOl = false;
+      }
+      if (!inUl) {
+        blocks.push("<ul>");
+        inUl = true;
+      }
+      blocks.push(`<li><p>${renderInlineMarkdown(ulMatch[1])}</p></li>`);
+      continue;
+    }
+
+    const olMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (olMatch) {
+      if (inUl) {
+        blocks.push("</ul>");
+        inUl = false;
+      }
+      if (!inOl) {
+        blocks.push("<ol>");
+        inOl = true;
+      }
+      blocks.push(`<li><p>${renderInlineMarkdown(olMatch[1])}</p></li>`);
+      continue;
+    }
+
+    closeLists();
+    blocks.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+  }
+
+  closeLists();
+
+  return blocks.join("") || "<p><br></p>";
 }
 
 function toNoteTitle(text) {
@@ -117,7 +190,13 @@ function toNoteTitle(text) {
     return "";
   }
 
-  return firstLine.slice(0, 120);
+  const cleaned = firstLine
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^[-*+]\s+/, "")
+    .replace(/^\d+\.\s+/, "")
+    .trim();
+
+  return (cleaned || firstLine).slice(0, 120);
 }
 
 async function apiRequest(pathname, options = {}) {
@@ -157,7 +236,7 @@ async function createQuickNoteWindow() {
     minWidth: 320,
     minHeight: 260,
     backgroundColor: "#202020",
-    title: "Quick Note",
+    title: "Mothership Quick Note",
     autoHideMenuBar: true,
     alwaysOnTop: true,
     webPreferences: {
