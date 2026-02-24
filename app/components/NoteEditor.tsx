@@ -186,6 +186,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [copiedChatMessageId, setCopiedChatMessageId] = useState<string | null>(null);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -201,6 +202,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
   // Get current note's chat messages
   const chatMessages = allChatMessages.get(note.id) || [];
+  const lastAssistantMessageId = useMemo(
+    () => [...chatMessages].reverse().find((msg) => msg.role === "assistant")?.id ?? null,
+    [chatMessages]
+  );
+
   const setChatMessages = (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
     setAllChatMessages(prev => {
       const newMap = new Map(prev);
@@ -748,6 +754,86 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
     setChatError(null);
   };
 
+  const handleRedoChat = async (messageId: string) => {
+    if (isChatLoading) return;
+
+    const apiKey = localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY);
+    if (!apiKey) {
+      setChatError("Please set your OpenRouter API key in AI Settings.");
+      return;
+    }
+
+    const messageIndex = chatMessages.findIndex((msg) => msg.id === messageId);
+    if (messageIndex === -1) {
+      return;
+    }
+
+    const messagesBeforeRedo = chatMessages.slice(0, messageIndex);
+
+    setIsChatLoading(true);
+    setChatError(null);
+
+    const tempAssistantId = `assistant-redo-${Date.now()}`;
+    setChatMessages([...messagesBeforeRedo, {
+      id: tempAssistantId,
+      role: "assistant",
+      content: "",
+    }]);
+
+    try {
+      const apiMessages = messagesBeforeRedo.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      const noteContent = stripHtml(editor?.getHTML() || note.content);
+
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: apiMessages,
+          apiKey,
+          model: "openai/gpt-4o-mini",
+          noteContext: {
+            title: title || "New page",
+            content: noteContent,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || data.error || "Failed to regenerate response");
+      }
+
+      let streamedContent = "";
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          streamedContent += chunk;
+
+          setChatMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === tempAssistantId ? { ...msg, content: streamedContent } : msg
+            )
+          );
+        }
+      }
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : "Failed to regenerate response");
+      setChatMessages(messagesBeforeRedo);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   return (
     <div className="flex h-full">
       {/* Left side - Editor with header */}
@@ -872,7 +958,10 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                 {chatError}
               </div>
             )}
-            {chatMessages.map((msg) => (
+            {chatMessages.map((msg) => {
+              const isLastAssistantMessage = msg.role === "assistant" && msg.id === lastAssistantMessageId;
+
+              return (
               <div
                 key={msg.id}
                 className={msg.role === "user" ? "flex justify-end" : ""}
@@ -882,20 +971,57 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   </div>
                 ) : (
-                  <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-2 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0">
-                    {msg.content ? (
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    ) : (
-                      <div className="flex gap-1.5 py-1">
-                        <span className="w-1.5 h-1.5 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                        <span className="w-1.5 h-1.5 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                        <span className="w-1.5 h-1.5 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                  <div>
+                    <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-2 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+                      {msg.content ? (
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      ) : (
+                        <div className="flex gap-1.5 py-1">
+                          <span className="w-1.5 h-1.5 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                          <span className="w-1.5 h-1.5 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                          <span className="w-1.5 h-1.5 bg-[#6b6b6b] rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                        </div>
+                      )}
+                    </div>
+                    {isLastAssistantMessage && msg.content && (
+                      <div className="flex gap-3 mt-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(msg.content);
+                            setCopiedChatMessageId(msg.id);
+                            setTimeout(() => setCopiedChatMessageId(null), 400);
+                          }}
+                          className={`transition-colors ${copiedChatMessageId === msg.id ? "text-green-400" : "text-[#6b6b6b] hover:text-[#ebebeb]"}`}
+                          title="Copy"
+                        >
+                          {copiedChatMessageId === msg.id ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            </svg>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleRedoChat(msg.id)}
+                          className="text-[#6b6b6b] hover:text-[#ebebeb] transition-colors"
+                          title="Regenerate"
+                          disabled={isChatLoading}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 4v6h6"/>
+                            <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+                          </svg>
+                        </button>
                       </div>
                     )}
                   </div>
                 )}
               </div>
-            ))}
+            );})}
             <div ref={chatMessagesEndRef} />
           </div>
 
