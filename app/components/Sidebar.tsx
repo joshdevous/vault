@@ -743,22 +743,12 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         >
           <span>Dream Journal</span>
         </div>
-        <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
-          <div className="px-2 py-2 text-[#6b6b6b] text-sm italic">
-            No dreams yet
-          </div>
-        </div>
 
         {/* VOICE LOG Section */}
         <div
           className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors mt-5"
         >
           <span>Voice Log</span>
-        </div>
-        <div className="ml-1 mt-0.5 flex flex-col gap-[1px]">
-          <div className="px-2 py-2 text-[#6b6b6b] text-sm italic">
-            No recordings yet
-          </div>
         </div>
       </div>
 
