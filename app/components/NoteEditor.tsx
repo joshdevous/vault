@@ -181,6 +181,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveNoteRef = useRef<(newTitle: string, newContent: string) => Promise<void>>(async () => {});
   const uploadNoteImageRef = useRef<(file: File) => Promise<string | null>>(async () => null);
+  const lastLocalEditorHtmlRef = useRef(note.content || "");
 
   // AI Chat state - local per-render state
   const [chatInput, setChatInput] = useState("");
@@ -584,6 +585,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
+      lastLocalEditorHtmlRef.current = html;
       
       // Clear existing timeout
       if (saveTimeoutRef.current) {
@@ -597,13 +599,26 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
     },
   }, [insertImageWithParagraph, note.id]);
 
-  // Update editor content when note changes
+  // Update editor content when note changes, including external updates to same note
   useEffect(() => {
-    if (editor && note.content !== editor.getHTML()) {
-      editor.commands.setContent(note.content);
+    if (!editor) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note.id, editor]);
+
+    const incomingHtml = note.content || "";
+    const currentHtml = editor.getHTML();
+
+    if (incomingHtml === currentHtml) {
+      return;
+    }
+
+    if (incomingHtml === lastLocalEditorHtmlRef.current) {
+      return;
+    }
+
+    editor.commands.setContent(incomingHtml);
+    lastLocalEditorHtmlRef.current = incomingHtml;
+  }, [note.id, note.content, editor]);
 
   // Update title ref for save function
   const titleRef = useRef(title);

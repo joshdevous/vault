@@ -1,5 +1,7 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut, desktopCapturer } = require("electron");
 const path = require("path");
+const { execFile, spawn } = require("child_process");
+const fs = require("fs");
 
 // Set NODE_ENV early to prevent TypeScript installation attempts
 const isDev = !app.isPackaged;
@@ -29,7 +31,151 @@ if (!isDev && process.platform === "win32") {
 let mainWindow;
 const quickNoteWindows = new Set();
 const quickAiWindows = new Set();
+let warmQuickNoteWindow = null;
+let warmQuickAiWindow = null;
+let warmQuickNoteLoading = false;
+let warmQuickAiLoading = false;
+let warmQuickNoteRequested = false;
+let warmQuickAiRequested = false;
 let quickNotesCategoryIdPromise = null;
+let callsCategoryIdPromise = null;
+let callsMonitorInterval = null;
+let callsMonitorRunning = false;
+let callsAbsentPollCount = 0;
+let callsTranscriberWindow = null;
+let callsLiveNoteId = null;
+let callsLiveContent = "";
+let callsChunkQueue = Promise.resolve();
+let callsChunkCounter = 0;
+let callsTranscribeWorker = null;
+let callsTranscribeWorkerRequestId = 0;
+const callsTranscribeWorkerPending = new Map();
+const CALLS_CHUNK_MS = 3000;
+const CALLS_POLL_MS = 5000;
+const CALLS_ABSENT_POLLS_TO_STOP = 1;
+let debugLogFilePath = null;
+
+function ensureDebugLogFile() {
+  if (debugLogFilePath) {
+    return debugLogFilePath;
+  }
+
+  const baseDir = process.env.MOTHERSHIP_DATA_DIR || path.join(app.getPath("appData"), "Mothership");
+  fs.mkdirSync(baseDir, { recursive: true });
+  debugLogFilePath = path.join(baseDir, "calls-debug.log");
+  return debugLogFilePath;
+}
+
+function appendDebugLog(line) {
+  try {
+    const filePath = ensureDebugLogFile();
+    fs.appendFileSync(filePath, `${line}\n`, "utf8");
+  } catch {
+    // Ignore logging write failures
+  }
+}
+
+function callsLog(...args) {
+  const stamp = new Date().toISOString();
+  const textArgs = args
+    .map((value) => {
+      if (typeof value === "string") {
+        return value;
+      }
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    })
+    .join(" ");
+
+  const line = `[CALLS ${stamp}] ${textArgs}`;
+  console.log(line);
+  appendDebugLog(line);
+}
+
+function ensureCallsTranscribeWorker() {
+  if (callsTranscribeWorker && !callsTranscribeWorker.killed) {
+    return callsTranscribeWorker;
+  }
+
+  const workerPath = path.join(__dirname, "calls-transcribe-worker.js");
+  callsTranscribeWorker = spawn(process.execPath, [workerPath], {
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
+    windowsHide: true,
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+    },
+  });
+
+  callsLog("Started calls transcribe worker", {
+    pid: callsTranscribeWorker.pid,
+    execPath: process.execPath,
+    workerPath,
+  });
+
+  callsTranscribeWorker.stdout?.on("data", (chunk) => {
+    const text = String(chunk || "").trim();
+    if (text) {
+      callsLog("Worker stdout", text);
+    }
+  });
+
+  callsTranscribeWorker.stderr?.on("data", (chunk) => {
+    const text = String(chunk || "").trim();
+    if (text) {
+      callsLog("Worker stderr", text);
+    }
+  });
+
+  callsTranscribeWorker.on("message", (message) => {
+    const requestId = typeof message?.requestId === "number" ? message.requestId : -1;
+    const pending = callsTranscribeWorkerPending.get(requestId);
+    if (!pending) {
+      return;
+    }
+
+    callsTranscribeWorkerPending.delete(requestId);
+
+    if (message?.type === "result") {
+      pending.resolve(typeof message?.text === "string" ? message.text : "");
+      return;
+    }
+
+    const errorText = typeof message?.error === "string" ? message.error : "Worker transcription failed";
+    pending.reject(new Error(errorText));
+  });
+
+  callsTranscribeWorker.on("exit", (code, signal) => {
+    callsLog("Calls transcribe worker exited", { code, signal });
+    for (const [requestId, pending] of callsTranscribeWorkerPending.entries()) {
+      pending.reject(new Error(`Worker exited before completing request ${requestId}`));
+      callsTranscribeWorkerPending.delete(requestId);
+    }
+    callsTranscribeWorker = null;
+  });
+
+  return callsTranscribeWorker;
+}
+
+async function transcribeWavChunkInWorker(base64Wav) {
+  const worker = ensureCallsTranscribeWorker();
+  const requestId = ++callsTranscribeWorkerRequestId;
+
+  const resultPromise = new Promise((resolve, reject) => {
+    callsTranscribeWorkerPending.set(requestId, { resolve, reject });
+  });
+
+  worker.send({
+    type: "transcribe",
+    requestId,
+    wavBase64: base64Wav,
+  });
+
+  return resultPromise;
+}
 
 function notifyQuickNotesChanged() {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -41,6 +187,10 @@ function notifyQuickAiSessionsChanged() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("quick-ai-sessions-changed");
   }
+}
+
+function notifyCallsChanged() {
+  notifyQuickNotesChanged();
 }
 let server;
 
@@ -232,6 +382,337 @@ async function ensureQuickNotesCategory() {
   }
 }
 
+async function ensureCallsCategory() {
+  if (callsCategoryIdPromise) {
+    return callsCategoryIdPromise;
+  }
+
+  callsCategoryIdPromise = (async () => {
+    const notes = await apiRequest("/api/notes?includeArchived=true", {
+      method: "GET",
+    });
+
+    const existing = Array.isArray(notes)
+      ? notes.find((note) => note && note.parentId === null && note.title === "Calls")
+      : null;
+
+    if (existing?.id) {
+      callsLog("Using existing Calls category", existing.id);
+      if (existing.icon !== "📞") {
+        await apiRequest(`/api/notes/${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ icon: "📞" }),
+        });
+        notifyCallsChanged();
+      }
+      return existing.id;
+    }
+
+    const created = await apiRequest("/api/notes", {
+      method: "POST",
+      body: JSON.stringify({ parentId: null }),
+    });
+
+    const updated = await apiRequest(`/api/notes/${created.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "Calls",
+        icon: "📞",
+        order: -99999,
+      }),
+    });
+
+    callsLog("Created Calls category", updated.id);
+
+    return updated.id;
+  })();
+
+  try {
+    return await callsCategoryIdPromise;
+  } catch (error) {
+    callsCategoryIdPromise = null;
+    throw error;
+  }
+}
+
+function formatCallTitle(startedAt) {
+  const yyyy = startedAt.getFullYear();
+  const mm = String(startedAt.getMonth() + 1).padStart(2, "0");
+  const dd = String(startedAt.getDate()).padStart(2, "0");
+  const hh = String(startedAt.getHours()).padStart(2, "0");
+  const min = String(startedAt.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+async function createLiveCallNote(startedAt) {
+  const callsParentId = await ensureCallsCategory();
+  const created = await apiRequest("/api/notes", {
+    method: "POST",
+    body: JSON.stringify({ parentId: callsParentId }),
+  });
+
+  const noteId = created.id;
+  const title = formatCallTitle(startedAt);
+  const initialContent = "<p>Live transcription started…</p>";
+
+  const updated = await apiRequest(`/api/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title,
+      content: initialContent,
+      icon: "🔴",
+      order: -Date.now(),
+      archived: false,
+    }),
+  });
+
+  callsLiveContent = initialContent;
+  callsLog("Created live call note", { noteId, title, parentId: callsParentId });
+  notifyCallsChanged();
+  return updated;
+}
+
+async function appendLiveCallTranscript(text) {
+  if (!callsLiveNoteId || !text.trim()) {
+    callsLog("Skipping append: missing note id or empty text", {
+      hasNoteId: Boolean(callsLiveNoteId),
+      textLength: text?.length || 0,
+    });
+    return;
+  }
+
+  const textToAppend = text.trim();
+
+  const nextChunk = toNoteHtml(textToAppend);
+  const merged = `${callsLiveContent || ""}${nextChunk}`;
+
+  const updated = await apiRequest(`/api/notes/${callsLiveNoteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      content: merged,
+    }),
+  });
+
+  callsLiveContent = updated?.content || merged;
+  callsLog("Appended transcript chunk", {
+    noteId: callsLiveNoteId,
+    chunkLength: textToAppend.length,
+    totalContentLength: callsLiveContent.length,
+  });
+  notifyCallsChanged();
+}
+
+function runPowerShell(command) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+      { windowsHide: true },
+      (error, stdout) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(String(stdout || "").trim());
+      }
+    );
+  });
+}
+
+async function isTeamsLikelyInCall() {
+  try {
+    const output = await runPowerShell("$procs = Get-Process -Name 'ms-teams','Teams' -ErrorAction SilentlyContinue; if (-not $procs) { '0'; exit }; $inCall = $false; foreach ($p in $procs) { if ($p.MainWindowTitle -match '(?i)(meeting|call)') { $inCall = $true; break } }; if ($inCall) { '1' } else { '0' }");
+    callsLog("Teams call probe output", output);
+    return output === "1";
+  } catch {
+    callsLog("Teams call probe failed");
+    return false;
+  }
+}
+
+async function createCallsTranscriberWindow() {
+  if (callsTranscriberWindow && !callsTranscriberWindow.isDestroyed()) {
+    return callsTranscriberWindow;
+  }
+
+  const window = new BrowserWindow({
+    width: 420,
+    height: 320,
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      spellcheck: false,
+    },
+  });
+
+  window.webContents.session.setDisplayMediaRequestHandler(
+    async (_request, callback) => {
+      try {
+        const sources = await desktopCapturer.getSources({ types: ["screen"] });
+        const source = sources[0];
+        if (!source) {
+          callsLog("Display media handler: no screen source available");
+          callback(null);
+          return;
+        }
+
+        callsLog("Display media handler selected source", source.id);
+        callback({
+          video: source,
+          audio: "loopback",
+        });
+      } catch {
+        callsLog("Display media handler failed");
+        callback(null);
+      }
+    },
+    { useSystemPicker: false }
+  );
+
+  callsTranscriberWindow = window;
+  callsLog("Created hidden calls transcriber window");
+  window.loadFile(path.join(__dirname, "call-transcriber.html"));
+  window.on("closed", () => {
+    callsLog("Calls transcriber window closed");
+    callsTranscriberWindow = null;
+  });
+
+  await new Promise((resolve) => {
+    if (window.webContents.isLoadingMainFrame()) {
+      window.webContents.once("did-finish-load", resolve);
+    } else {
+      resolve();
+    }
+  });
+
+  return window;
+}
+
+async function startLiveCallTranscription() {
+  if (callsLiveNoteId) {
+    callsLog("Start ignored: live note already active", callsLiveNoteId);
+    return;
+  }
+
+  const startedAt = new Date();
+  const note = await createLiveCallNote(startedAt);
+  callsLiveNoteId = note.id;
+  callsChunkQueue = Promise.resolve();
+  callsChunkCounter = 0;
+  callsLog("Starting live call transcription", { noteId: callsLiveNoteId });
+
+  const window = await createCallsTranscriberWindow();
+  window.webContents.send("calls-transcriber-start", {
+    chunkMs: CALLS_CHUNK_MS,
+  });
+  callsLog("Sent calls-transcriber-start");
+}
+
+function stopLiveCallTranscription() {
+  const noteIdToReset = callsLiveNoteId;
+  callsLog("Stopping live call transcription", { noteId: noteIdToReset, chunksProcessed: callsChunkCounter });
+  if (callsTranscriberWindow && !callsTranscriberWindow.isDestroyed()) {
+    callsTranscriberWindow.webContents.send("calls-transcriber-stop");
+  }
+
+  if (noteIdToReset) {
+    void apiRequest(`/api/notes/${noteIdToReset}`, {
+      method: "PATCH",
+      body: JSON.stringify({ icon: "📄" }),
+    })
+      .then(() => {
+        callsLog("Reset live call note icon to default", { noteId: noteIdToReset });
+        notifyCallsChanged();
+      })
+      .catch((error) => {
+        callsLog("Failed to reset live call note icon", {
+          noteId: noteIdToReset,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      });
+  }
+
+  callsLiveNoteId = null;
+  callsLiveContent = "";
+  callsChunkQueue = Promise.resolve();
+}
+
+async function transcribeWavChunk(base64Wav) {
+  callsLog("Transcribe chunk request", { payloadBytes: base64Wav.length });
+  const text = String(await transcribeWavChunkInWorker(base64Wav)).trim();
+  callsLog("Transcribe chunk response", { textLength: text.length, preview: text.slice(0, 80) });
+  return text;
+}
+
+async function pollTeamsCallState() {
+  if (callsMonitorRunning) {
+    return;
+  }
+
+  callsMonitorRunning = true;
+
+  try {
+    const isActive = await isTeamsLikelyInCall();
+    callsLog("Poll teams state", { isActive, hasLiveNote: Boolean(callsLiveNoteId), absentCount: callsAbsentPollCount });
+
+    if (isActive) {
+      callsAbsentPollCount = 0;
+      if (!callsLiveNoteId) {
+        await startLiveCallTranscription();
+      }
+      return;
+    }
+
+    if (!callsLiveNoteId) {
+      return;
+    }
+
+    callsAbsentPollCount += 1;
+    if (callsAbsentPollCount >= CALLS_ABSENT_POLLS_TO_STOP) {
+      stopLiveCallTranscription();
+      callsAbsentPollCount = 0;
+    }
+  } catch {
+    callsLog("Poll teams state failed");
+  } finally {
+    callsMonitorRunning = false;
+  }
+}
+
+function startCallsMonitor() {
+  if (callsMonitorInterval) {
+    return;
+  }
+
+  void ensureCallsCategory();
+  void pollTeamsCallState();
+  callsLog("Calls monitor started");
+
+  callsMonitorInterval = setInterval(() => {
+    void pollTeamsCallState();
+  }, CALLS_POLL_MS);
+}
+
+function stopCallsMonitor() {
+  if (callsMonitorInterval) {
+    clearInterval(callsMonitorInterval);
+    callsMonitorInterval = null;
+  }
+  stopLiveCallTranscription();
+  callsLog("Calls monitor stopped");
+}
+
+function stopCallsTranscribeWorker() {
+  if (callsTranscribeWorker && !callsTranscribeWorker.killed) {
+    callsLog("Stopping calls transcribe worker", { pid: callsTranscribeWorker.pid });
+    callsTranscribeWorker.kill();
+  }
+  callsTranscribeWorker = null;
+}
+
 async function getOpenRouterApiKeyFromMainWindow() {
   try {
     if (!mainWindow || mainWindow.isDestroyed()) {
@@ -320,7 +801,36 @@ async function generateQuickNoteTitle(noteId, text) {
   notifyQuickNotesChanged();
 }
 
-async function createQuickNoteWindow() {
+function isWindowUsable(window) {
+  return Boolean(window) && !window.isDestroyed();
+}
+
+function focusQuickWindow(window) {
+  if (!isWindowUsable(window)) {
+    return;
+  }
+
+  if (window.isMinimized()) {
+    window.restore();
+  }
+
+  const showAndFocus = () => {
+    if (!isWindowUsable(window)) {
+      return;
+    }
+    window.show();
+    window.focus();
+  };
+
+  if (window.webContents.isLoadingMainFrame()) {
+    window.once("ready-to-show", showAndFocus);
+    return;
+  }
+
+  showAndFocus();
+}
+
+function buildQuickNoteWindow() {
   const window = new BrowserWindow({
     width: 380,
     height: 420,
@@ -331,6 +841,7 @@ async function createQuickNoteWindow() {
     autoHideMenuBar: true,
     alwaysOnTop: true,
     frame: false,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -341,14 +852,17 @@ async function createQuickNoteWindow() {
 
   quickNoteWindows.add(window);
 
-  window.loadFile(path.join(__dirname, "quick-note.html"));
-
   window.on("closed", () => {
     quickNoteWindows.delete(window);
+    if (warmQuickNoteWindow === window) {
+      warmQuickNoteWindow = null;
+    }
   });
+
+  return window;
 }
 
-async function createQuickAiWindow() {
+function buildQuickAiWindow() {
   const window = new BrowserWindow({
     width: 520,
     height: 640,
@@ -359,6 +873,7 @@ async function createQuickAiWindow() {
     autoHideMenuBar: true,
     alwaysOnTop: true,
     frame: false,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -368,11 +883,123 @@ async function createQuickAiWindow() {
   });
 
   quickAiWindows.add(window);
-  window.loadFile(path.join(__dirname, "quick-ai.html"));
 
   window.on("closed", () => {
     quickAiWindows.delete(window);
+    if (warmQuickAiWindow === window) {
+      warmQuickAiWindow = null;
+    }
   });
+
+  return window;
+}
+
+async function ensureWarmQuickNoteWindow() {
+  if (isWindowUsable(warmQuickNoteWindow)) {
+    return;
+  }
+
+  if (warmQuickNoteLoading) {
+    warmQuickNoteRequested = true;
+    return;
+  }
+
+  warmQuickNoteLoading = true;
+  const window = buildQuickNoteWindow();
+  warmQuickNoteWindow = window;
+
+  try {
+    await window.loadFile(path.join(__dirname, "quick-note.html"));
+  } catch {
+    if (!window.isDestroyed()) {
+      window.destroy();
+    }
+    if (warmQuickNoteWindow === window) {
+      warmQuickNoteWindow = null;
+    }
+  } finally {
+    warmQuickNoteLoading = false;
+    if (warmQuickNoteRequested) {
+      warmQuickNoteRequested = false;
+      void ensureWarmQuickNoteWindow();
+    }
+  }
+}
+
+async function ensureWarmQuickAiWindow() {
+  if (isWindowUsable(warmQuickAiWindow)) {
+    return;
+  }
+
+  if (warmQuickAiLoading) {
+    warmQuickAiRequested = true;
+    return;
+  }
+
+  warmQuickAiLoading = true;
+  const window = buildQuickAiWindow();
+  warmQuickAiWindow = window;
+
+  try {
+    await window.loadFile(path.join(__dirname, "quick-ai.html"));
+  } catch {
+    if (!window.isDestroyed()) {
+      window.destroy();
+    }
+    if (warmQuickAiWindow === window) {
+      warmQuickAiWindow = null;
+    }
+  } finally {
+    warmQuickAiLoading = false;
+    if (warmQuickAiRequested) {
+      warmQuickAiRequested = false;
+      void ensureWarmQuickAiWindow();
+    }
+  }
+}
+
+async function createQuickNoteWindow() {
+  if (isWindowUsable(warmQuickNoteWindow)) {
+    const window = warmQuickNoteWindow;
+    warmQuickNoteWindow = null;
+    focusQuickWindow(window);
+    void ensureWarmQuickNoteWindow();
+    return;
+  }
+
+  const window = buildQuickNoteWindow();
+  try {
+    await window.loadFile(path.join(__dirname, "quick-note.html"));
+    focusQuickWindow(window);
+  } catch {
+    if (!window.isDestroyed()) {
+      window.destroy();
+    }
+  } finally {
+    void ensureWarmQuickNoteWindow();
+  }
+}
+
+async function createQuickAiWindow() {
+  if (isWindowUsable(warmQuickAiWindow)) {
+    const window = warmQuickAiWindow;
+    warmQuickAiWindow = null;
+    focusQuickWindow(window);
+    void ensureWarmQuickAiWindow();
+    return;
+  }
+
+  const window = buildQuickAiWindow();
+  try {
+    await window.loadFile(path.join(__dirname, "quick-ai.html"));
+    focusQuickWindow(window);
+  } catch {
+    if (!window.isDestroyed()) {
+      window.destroy();
+    }
+  } finally {
+    void ensureWarmQuickAiWindow();
+  }
 }
 
 async function createOrUpdateQuickNote(text, options = {}) {
@@ -690,6 +1317,59 @@ ipcMain.on("quick-ai-close", (event) => {
   window?.close();
 });
 
+ipcMain.on("calls-transcriber-audio-chunk", (event, payload) => {
+  const base64Wav = typeof payload?.wavBase64 === "string" ? payload.wavBase64 : "";
+
+  if (!callsLiveNoteId || !base64Wav) {
+    callsLog("Dropped incoming chunk", {
+      hasLiveNote: Boolean(callsLiveNoteId),
+      hasChunk: Boolean(base64Wav),
+    });
+    return;
+  }
+
+  callsChunkCounter += 1;
+  const chunkId = callsChunkCounter;
+  callsLog("Received transcriber chunk", { chunkId, base64Length: base64Wav.length, noteId: callsLiveNoteId });
+
+  callsChunkQueue = callsChunkQueue
+    .then(async () => {
+      callsLog("Processing chunk", { chunkId });
+      const text = await transcribeWavChunk(base64Wav);
+      if (text) {
+        await appendLiveCallTranscript(text);
+      } else {
+        callsLog("Chunk produced empty transcript", { chunkId });
+      }
+    })
+    .catch((error) => {
+      callsLog("Chunk processing failed", {
+        chunkId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
+
+  const senderWindow = BrowserWindow.fromWebContents(event.sender);
+  if (senderWindow && !senderWindow.isDestroyed()) {
+    callsLog("Chunk sender window alive", senderWindow.id);
+  }
+});
+
+ipcMain.on("calls-transcriber-error", (_event, payload) => {
+  const message = typeof payload?.message === "string" ? payload.message : "Unknown calls transcriber error";
+  callsLog("Calls transcriber error", { message });
+});
+
+ipcMain.on("calls-transcriber-log", (_event, payload) => {
+  const message = typeof payload?.message === "string" ? payload.message : "";
+  const data = payload?.data;
+  callsLog(`Renderer: ${message}`, data);
+});
+
+ipcMain.on("renderer-runtime-error", (_event, payload) => {
+  callsLog("Renderer runtime error", payload);
+});
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -810,6 +1490,13 @@ async function startNextServer() {
 app.whenReady().then(async () => {
   await startNextServer();
   createWindow();
+  startCallsMonitor();
+  callsLog("App ready and calls monitoring initialized");
+
+  setTimeout(() => {
+    void ensureWarmQuickNoteWindow();
+    void ensureWarmQuickAiWindow();
+  }, 1200);
 
   const registered = globalShortcut.register("CommandOrControl+Q", () => {
     void createQuickNoteWindow();
@@ -845,6 +1532,8 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   globalShortcut.unregisterAll();
+  stopCallsMonitor();
+  stopCallsTranscribeWorker();
   if (server) {
     server.close();
   }

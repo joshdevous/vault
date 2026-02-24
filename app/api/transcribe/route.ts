@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pipeline } from "@xenova/transformers";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 // Cache the pipeline for reuse
 let transcriber: Awaited<ReturnType<typeof pipeline>> | null = null;
+let transcribeRequestCount = 0;
+
+function debugLog(message: string, payload?: unknown) {
+  const stamp = new Date().toISOString();
+  const details = payload === undefined ? "" : ` ${typeof payload === "string" ? payload : JSON.stringify(payload)}`;
+  const line = `[TRANSCRIBE ${stamp}] ${message}${details}`;
+  console.log(line);
+
+  try {
+    const baseDir = process.env.MOTHERSHIP_DATA_DIR || join(process.cwd(), "data", "temp");
+    mkdirSync(baseDir, { recursive: true });
+    appendFileSync(join(baseDir, "calls-debug.log"), `${line}\n`, "utf8");
+  } catch {
+    // Ignore file logging failures
+  }
+}
 
 async function getTranscriber() {
   if (!transcriber) {
@@ -52,21 +70,42 @@ function parseWav(buffer: ArrayBuffer): { audioData: Float32Array; sampleRate: n
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = ++transcribeRequestCount;
   try {
-    const formData = await request.formData();
-    const audioFile = formData.get("audio") as File;
-    
-    if (!audioFile) {
-      return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
+    debugLog("request received", { requestId });
+    const contentType = request.headers.get("content-type") || "";
+    let arrayBuffer: ArrayBuffer;
+
+    if (contentType.includes("application/json")) {
+      const body = await request.json().catch(() => ({}));
+      const wavBase64 = typeof body?.wavBase64 === "string" ? body.wavBase64 : "";
+
+      if (!wavBase64) {
+        debugLog("missing wavBase64 in JSON payload", { requestId });
+        return NextResponse.json({ error: "No wavBase64 provided" }, { status: 400 });
+      }
+
+      const nodeBuffer = Buffer.from(wavBase64, "base64");
+      arrayBuffer = nodeBuffer.buffer.slice(nodeBuffer.byteOffset, nodeBuffer.byteOffset + nodeBuffer.byteLength);
+      debugLog("decoded JSON wav payload", { requestId, bytes: nodeBuffer.byteLength, source: body?.source || "unknown" });
+    } else {
+      const formData = await request.formData();
+      const audioFile = formData.get("audio") as File;
+
+      if (!audioFile) {
+        debugLog("missing audio file", { requestId });
+        return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
+      }
+
+      debugLog("audio file size", { requestId, bytes: audioFile.size });
+      arrayBuffer = await audioFile.arrayBuffer();
+      debugLog("read arrayBuffer", { requestId, bytes: arrayBuffer.byteLength });
     }
-    
-    // Read audio file as ArrayBuffer
-    const arrayBuffer = await audioFile.arrayBuffer();
     
     // Parse WAV file
     const { audioData, sampleRate } = parseWav(arrayBuffer);
     
-    console.log(`Audio: ${audioData.length} samples at ${sampleRate}Hz`);
+    debugLog("parsed wav", { requestId, samples: audioData.length, sampleRate });
     
     // Get or load the transcriber
     const pipe = await getTranscriber();
@@ -85,10 +124,12 @@ export async function POST(request: NextRequest) {
     const text = typeof result === "object" && "text" in result 
       ? (result as { text: string }).text 
       : String(result);
+
+    debugLog("transcription result", { requestId, textLength: text.trim().length });
     
     return NextResponse.json({ text: text.trim() });
   } catch (error) {
-    console.error("Transcription error:", error);
+    debugLog("transcription error", { requestId, error: String(error) });
     
     return NextResponse.json(
       { error: "Transcription failed", details: String(error) }, 

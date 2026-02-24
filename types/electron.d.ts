@@ -2,6 +2,7 @@ export interface ElectronAPI {
   minimize: () => void;
   maximize: () => void;
   close: () => void;
+  reportRendererRuntimeError: (payload: unknown) => void;
   platform: string;
   selectFolder: () => Promise<string | null>;
   onGlobalNewNote: (callback: () => void) => () => void;
@@ -21,6 +22,11 @@ export interface ElectronAPI {
   closeQuickAi: () => void;
   onQuickAiStream: (callback: (payload: { requestId: string; type: "chunk" | "end" | "error"; chunk?: string; content?: string; message?: string }) => void) => () => void;
   onQuickAiSessionsChanged: (callback: () => void) => () => void;
+  callsTranscriberSendChunk: (wavBase64: string) => void;
+  callsTranscriberReportError: (message: string) => void;
+  callsTranscriberLog: (message: string, data?: unknown) => void;
+  onCallsTranscriberStart: (callback: (payload: { chunkMs?: number }) => void) => () => void;
+  onCallsTranscriberStop: (callback: () => void) => () => void;
 }
 
 declare global {

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimize: () => ipcRenderer.send("window-minimize"),
   maximize: () => ipcRenderer.send("window-maximize"),
   close: () => ipcRenderer.send("window-close"),
+  reportRendererRuntimeError: (payload) => ipcRenderer.send("renderer-runtime-error", payload),
   
   // Platform info
   platform: process.platform,
@@ -77,6 +78,35 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
     return () => {
       ipcRenderer.removeListener("quick-ai-sessions-changed", listener);
+    };
+  },
+
+  // Calls transcriber window bridge
+  callsTranscriberSendChunk: (wavBase64) => ipcRenderer.send("calls-transcriber-audio-chunk", { wavBase64 }),
+  callsTranscriberReportError: (message) => ipcRenderer.send("calls-transcriber-error", { message }),
+  callsTranscriberLog: (message, data) => ipcRenderer.send("calls-transcriber-log", { message, data }),
+  onCallsTranscriberStart: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("calls-transcriber-start", listener);
+
+    return () => {
+      ipcRenderer.removeListener("calls-transcriber-start", listener);
+    };
+  },
+  onCallsTranscriberStop: (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener = () => callback();
+    ipcRenderer.on("calls-transcriber-stop", listener);
+
+    return () => {
+      ipcRenderer.removeListener("calls-transcriber-stop", listener);
     };
   },
   
