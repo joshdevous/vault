@@ -50,7 +50,7 @@ function scheduleSave() {
 
   saveTimer = setTimeout(() => {
     void flushSave();
-  }, 350);
+  }, 180);
 }
 
 input.addEventListener("input", () => {
@@ -59,6 +59,9 @@ input.addEventListener("input", () => {
 
 input.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (noteId && input.value.trim()) {
+      window.electronAPI.quickNoteFinalize(noteId, input.value);
+    }
     window.electronAPI.closeQuickNote();
   }
 });
@@ -66,6 +69,10 @@ input.addEventListener("keydown", (event) => {
 window.addEventListener("beforeunload", () => {
   if (saveTimer) {
     clearTimeout(saveTimer);
+  }
+
+  if (noteId && input.value.trim()) {
+    window.electronAPI.quickNoteFinalize(noteId, input.value);
   }
 });
 

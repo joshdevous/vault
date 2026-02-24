@@ -28,8 +28,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   // Quick note window
+  openQuickNote: () => ipcRenderer.send("quick-note-open"),
   quickNoteCreate: (text) => ipcRenderer.invoke("quick-note-create", { text }),
   quickNoteUpdate: (noteId, text) => ipcRenderer.invoke("quick-note-update", { noteId, text }),
+  quickNoteFinalize: (noteId, text) => ipcRenderer.send("quick-note-finalize", { noteId, text }),
   closeQuickNote: () => ipcRenderer.send("quick-note-close"),
   
   // Add more IPC methods here as needed

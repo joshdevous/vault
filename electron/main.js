@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, globalShortcut } = require("electron");
 const path = require("path");
-const { readFile, writeFile } = require("fs/promises");
 
 // Set NODE_ENV early to prevent TypeScript installation attempts
 const isDev = !app.isPackaged;
@@ -28,66 +27,10 @@ if (!isDev && process.platform === "win32") {
 }
 
 let mainWindow;
-let quickNoteWindow;
+const quickNoteWindows = new Set();
 let server;
-let quickNoteBoundsSaveTimeout;
 
 const PORT = isDev ? 3000 : 51333;
-
-function getQuickNoteBoundsFilePath() {
-  return path.join(app.getPath("userData"), "quick-note-window.json");
-}
-
-async function loadQuickNoteBounds() {
-  try {
-    const raw = await readFile(getQuickNoteBoundsFilePath(), "utf8");
-    const parsed = JSON.parse(raw);
-
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      typeof parsed.width !== "number" ||
-      typeof parsed.height !== "number"
-    ) {
-      return null;
-    }
-
-    return {
-      width: Math.max(320, Math.round(parsed.width)),
-      height: Math.max(260, Math.round(parsed.height)),
-      ...(typeof parsed.x === "number" ? { x: Math.round(parsed.x) } : {}),
-      ...(typeof parsed.y === "number" ? { y: Math.round(parsed.y) } : {}),
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function saveQuickNoteBounds(bounds) {
-  try {
-    await writeFile(getQuickNoteBoundsFilePath(), JSON.stringify(bounds), "utf8");
-  } catch (error) {
-    console.error("Failed to save quick note bounds:", error);
-  }
-}
-
-function scheduleSaveQuickNoteBounds() {
-  if (!quickNoteWindow || quickNoteWindow.isDestroyed()) {
-    return;
-  }
-
-  if (quickNoteBoundsSaveTimeout) {
-    clearTimeout(quickNoteBoundsSaveTimeout);
-  }
-
-  quickNoteBoundsSaveTimeout = setTimeout(() => {
-    if (!quickNoteWindow || quickNoteWindow.isDestroyed()) {
-      return;
-    }
-    const bounds = quickNoteWindow.getBounds();
-    void saveQuickNoteBounds(bounds);
-  }, 200);
-}
 
 function escapeHtml(value) {
   return value
@@ -216,53 +159,117 @@ async function apiRequest(pathname, options = {}) {
   return response.json();
 }
 
-async function createQuickNoteWindow() {
-  if (quickNoteWindow && !quickNoteWindow.isDestroyed()) {
-    if (quickNoteWindow.isMinimized()) {
-      quickNoteWindow.restore();
+async function ensureQuickNotesCategory() {
+  const notes = await apiRequest("/api/notes?includeArchived=true", {
+    method: "GET",
+  });
+
+  const existing = Array.isArray(notes)
+    ? notes.find((note) => note && note.parentId === null && note.title === "Quick Notes")
+    : null;
+
+  if (existing?.id) {
+    return existing.id;
+  }
+
+  const created = await apiRequest("/api/notes", {
+    method: "POST",
+    body: JSON.stringify({ parentId: null }),
+  });
+
+  const updated = await apiRequest(`/api/notes/${created.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: "Quick Notes",
+      icon: "🗒️",
+      order: -100000,
+    }),
+  });
+
+  return updated.id;
+}
+
+async function getOpenRouterApiKeyFromMainWindow() {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return "";
     }
-    quickNoteWindow.show();
-    quickNoteWindow.focus();
+
+    const key = await mainWindow.webContents.executeJavaScript(
+      "localStorage.getItem('mothership-openrouter-api-key') || ''",
+      true
+    );
+
+    return typeof key === "string" ? key : "";
+  } catch {
+    return "";
+  }
+}
+
+async function generateQuickNoteTitle(noteId, text) {
+  const apiKey = await getOpenRouterApiKeyFromMainWindow();
+  if (!apiKey) {
     return;
   }
 
-  const savedBounds = await loadQuickNoteBounds();
+  const prompt = `You are generating a title for a quick note captured in a personal notes app.\n\nRules:\n- 3 to 6 words\n- describe what the note says\n- do not guess missing context\n- no quotes, no trailing punctuation\n\nQuick note content:\n${text.slice(0, 2500)}`;
 
-  quickNoteWindow = new BrowserWindow({
-    width: savedBounds?.width ?? 380,
-    height: savedBounds?.height ?? 420,
-    ...(savedBounds?.x !== undefined ? { x: savedBounds.x } : {}),
-    ...(savedBounds?.y !== undefined ? { y: savedBounds.y } : {}),
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://mothership.app",
+      "X-Title": "Mothership",
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 24,
+    }),
+  });
+
+  if (!response.ok) {
+    return;
+  }
+
+  const data = await response.json();
+  const title = data?.choices?.[0]?.message?.content?.trim()?.replace(/^['\"]|['\"]$/g, "")?.slice(0, 60);
+  if (!title) {
+    return;
+  }
+
+  await apiRequest(`/api/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
+async function createQuickNoteWindow() {
+  const window = new BrowserWindow({
+    width: 380,
+    height: 420,
     minWidth: 320,
     minHeight: 260,
     backgroundColor: "#202020",
     title: "Mothership Quick Note",
     autoHideMenuBar: true,
     alwaysOnTop: true,
+    icon: undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
+      spellcheck: false,
     },
   });
 
-  quickNoteWindow.loadFile(path.join(__dirname, "quick-note.html"));
+  quickNoteWindows.add(window);
 
-  quickNoteWindow.on("move", scheduleSaveQuickNoteBounds);
-  quickNoteWindow.on("resize", scheduleSaveQuickNoteBounds);
+  window.loadFile(path.join(__dirname, "quick-note.html"));
 
-  quickNoteWindow.on("closed", () => {
-    if (quickNoteBoundsSaveTimeout) {
-      clearTimeout(quickNoteBoundsSaveTimeout);
-      quickNoteBoundsSaveTimeout = null;
-    }
-
-    const lastBounds = quickNoteWindow?.getBounds();
-    if (lastBounds) {
-      void saveQuickNoteBounds(lastBounds);
-    }
-
-    quickNoteWindow = null;
+  window.on("closed", () => {
+    quickNoteWindows.delete(window);
   });
 }
 
@@ -273,9 +280,11 @@ ipcMain.handle("quick-note-create", async (_event, payload) => {
     throw new Error("Cannot create empty quick note");
   }
 
+  const quickNotesParentId = await ensureQuickNotesCategory();
+
   const created = await apiRequest("/api/notes", {
     method: "POST",
-    body: JSON.stringify({ parentId: null }),
+    body: JSON.stringify({ parentId: quickNotesParentId }),
   });
 
   const noteId = created.id;
@@ -307,8 +316,24 @@ ipcMain.handle("quick-note-update", async (_event, payload) => {
   });
 });
 
-ipcMain.on("quick-note-close", () => {
-  quickNoteWindow?.close();
+ipcMain.on("quick-note-finalize", (_event, payload) => {
+  const noteId = typeof payload?.noteId === "string" ? payload.noteId : "";
+  const text = typeof payload?.text === "string" ? payload.text : "";
+
+  if (!noteId || !text.trim()) {
+    return;
+  }
+
+  void generateQuickNoteTitle(noteId, text);
+});
+
+ipcMain.on("quick-note-close", (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  window?.close();
+});
+
+ipcMain.on("quick-note-open", () => {
+  void createQuickNoteWindow();
 });
 
 function createWindow() {
