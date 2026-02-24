@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quick AI Chat</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #191919;
+        color: #e3e3e3;
+      }
+
+      .container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .titlebar {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 8px 0 10px;
+        border-bottom: 1px solid #2f2f2f;
+        -webkit-app-region: drag;
+      }
+
+      .title {
+        font-size: 12px;
+        color: #b5b5b5;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .icon-btn {
+        width: 24px;
+        height: 24px;
+        border: 0;
+        background: transparent;
+        color: #9b9b9b;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-app-region: no-drag;
+      }
+
+      .icon-btn:hover {
+        background: #353535;
+        color: #e3e3e3;
+      }
+
+      .icon-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .messages {
+        flex: 1;
+        overflow: auto;
+        padding: 18px 16px;
+      }
+
+      .messages-inner {
+        max-width: 640px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .row-user {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .bubble-user {
+        max-width: 80%;
+        border-radius: 16px;
+        padding: 10px 12px;
+        background: #3f3f3f;
+        white-space: pre-wrap;
+        line-height: 1.45;
+      }
+
+      .assistant-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .assistant-text {
+        white-space: pre-wrap;
+        line-height: 1.6;
+        color: #e3e3e3;
+      }
+
+      .assistant-actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .assistant-action {
+        border: 0;
+        background: transparent;
+        color: #6b6b6b;
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .assistant-action:hover {
+        color: #ebebeb;
+      }
+
+      .assistant-action.copied {
+        color: #4ade80;
+      }
+
+      .typing {
+        display: flex;
+        gap: 6px;
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #6b6b6b;
+        animation: bounce 1s infinite;
+      }
+
+      .dot:nth-child(2) { animation-delay: .15s; }
+      .dot:nth-child(3) { animation-delay: .3s; }
+
+      @keyframes bounce {
+        0%, 80%, 100% { transform: translateY(0); opacity: .6; }
+        40% { transform: translateY(-4px); opacity: 1; }
+      }
+
+      .composer {
+        padding: 10px;
+        border-top: 1px solid #2f2f2f;
+      }
+
+      .composer-inner {
+        max-width: 640px;
+        margin: 0 auto;
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+        background: #252525;
+        border: 1px solid #3f3f3f;
+        border-radius: 10px;
+        padding: 8px;
+      }
+
+      textarea {
+        flex: 1;
+        border: 0;
+        outline: none;
+        resize: none;
+        background: transparent;
+        color: #e3e3e3;
+        font-size: 14px;
+        font-family: inherit;
+        line-height: 1.45;
+        max-height: 180px;
+      }
+
+      textarea::placeholder {
+        color: #6b6b6b;
+      }
+
+      .send-btn {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 8px;
+        background: #4f4f4f;
+        color: #e3e3e3;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .send-btn:hover { background: #5f5f5f; }
+      .send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+      .error {
+        max-width: 640px;
+        margin: 10px auto 0;
+        color: #f87171;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="titlebar">
+        <div class="title">Quick AI Chat</div>
+        <div class="actions">
+          <button id="trashBtn" class="icon-btn" title="Delete" aria-label="Delete">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+          <button id="saveBtn" class="icon-btn" title="Save to history" aria-label="Save to history">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="messages-inner" id="messagesInner"></div>
+      </div>
+
+      <div class="composer">
+        <div class="composer-inner">
+          <textarea id="input" rows="1" placeholder="Ask anything..."></textarea>
+          <button id="sendBtn" class="send-btn" aria-label="Send" title="Send">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+        <div class="error" id="error"></div>
+      </div>
+    </div>
+
+    <script src="./quick-ai.js"></script>
+  </body>
+</html>
