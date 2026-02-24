@@ -375,6 +375,20 @@ inputEl.addEventListener("keydown", (event) => {
   }
 });
 
+window.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isInput = target === inputEl;
+
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !isInput) {
+    event.preventDefault();
+    void saveConversation();
+  }
+
+  if (event.key === "Escape") {
+    window.electronAPI.closeQuickAi();
+  }
+});
+
 sendBtn.addEventListener("click", () => {
   void sendMessage();
 });

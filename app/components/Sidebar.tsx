@@ -286,6 +286,12 @@ function NoteItem({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              const isQuickNotesRoot = note.parentId === null && note.title === "Quick Notes";
+              if (isQuickNotesRoot) {
+                window.electronAPI?.openQuickNote?.();
+                return;
+              }
+
               onExpandNote(note.id);
               onCreateNote(note.id);
             }}
@@ -731,17 +737,41 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         </div>
 
         {/* DREAM JOURNAL Section */}
-        <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors mt-5"
-        >
-          <span>Dream Journal</span>
+        <div className="flex items-center justify-between mt-5">
+          <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors">
+            <span>Dream Journal</span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setCreateMenu({ x: e.clientX, y: e.clientY });
+            }}
+            className="p-1 text-[#6b6b6b] hover:text-[#aeaeae] hover:bg-[rgba(255,255,255,0.055)] rounded transition-all"
+            title="Add dream journal"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </button>
         </div>
 
         {/* VOICE LOG Section */}
-        <div
-          className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors mt-5"
-        >
-          <span>Voice Log</span>
+        <div className="flex items-center justify-between mt-5">
+          <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors">
+            <span>Voice Log</span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setCreateMenu({ x: e.clientX, y: e.clientY });
+            }}
+            className="p-1 text-[#6b6b6b] hover:text-[#aeaeae] hover:bg-[rgba(255,255,255,0.055)] rounded transition-all"
+            title="Add voice log"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </button>
         </div>
       </div>
 

@@ -53,9 +53,29 @@ input.addEventListener("keydown", (event) => {
     window.electronAPI.closeQuickNote();
   }
 
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    void handleSave();
+    return;
+  }
+
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
     event.preventDefault();
     void handleSave();
+  }
+});
+
+window.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isInput = target === input;
+
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !isInput) {
+    event.preventDefault();
+    void handleSave();
+  }
+
+  if (event.key === "Escape") {
+    window.electronAPI.closeQuickNote();
   }
 });
 
