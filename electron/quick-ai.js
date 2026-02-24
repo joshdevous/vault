@@ -164,7 +164,9 @@ function render() {
 
     html.push(`
       <div class="assistant-wrap">
-        <div class="assistant-text">${renderMarkdown(message.content)}</div>
+        <div class="assistant-text">${message.content
+          ? renderMarkdown(message.content)
+          : '<div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>'}</div>
         ${showActions ? `
           <div class="assistant-actions">
             <button class="assistant-action ${state.copiedMessageId === message.id ? "copied" : ""}" data-action="copy" data-id="${message.id}" title="Copy" aria-label="Copy">
@@ -182,10 +184,6 @@ function render() {
         ` : ""}
       </div>
     `);
-  }
-
-  if (state.loading) {
-    html.push('<div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
   }
 
   messagesInnerEl.innerHTML = html.join("");
@@ -235,6 +233,7 @@ async function generateAssistantReply(sourceMessages) {
               ? { ...message, content: finalContent }
               : message
           );
+          setLoading(false);
           render();
           unsubscribe();
           resolve(undefined);
@@ -243,6 +242,7 @@ async function generateAssistantReply(sourceMessages) {
 
         if (eventPayload.type === "error") {
           state.messages = state.messages.filter((message) => message.id !== tempAssistantId);
+          setLoading(false);
           render();
           unsubscribe();
           reject(new Error(eventPayload.message || "Failed to stream AI response"));

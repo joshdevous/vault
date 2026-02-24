@@ -1083,7 +1083,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
 
         {/* Input area */}
         <div>
-          <div className="max-w-3xl mx-auto px-4 py-9">
+          <div className="max-w-3xl mx-auto p-4">
             {/* Image preview */}
             {pendingImages.length > 0 && (
               <div className="flex gap-2 mb-2 flex-wrap">
@@ -1150,7 +1150,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                 </svg>
               </button>
             </div>
-            <p className="text-xs text-[#6b6b6b] mt-4 text-center">
+            <p className="text-xs text-[#6b6b6b] mt-3 text-center">
               <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Enter</kbd> send, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Shift+Enter</kbd> new line, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Ctrl+N</kbd> new chat, <kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded text-[#9b9b9b]">Ctrl+V</kbd> paste image
             </p>
           </div>
