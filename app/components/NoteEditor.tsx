@@ -438,6 +438,20 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
       attributes: {
         class: "prose prose-invert max-w-none focus:outline-none h-full min-h-[120px] text-[#e3e3e3] text-base leading-relaxed",
       },
+      handleKeyDown: (_view, event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+
+          void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content);
+          return true;
+        }
+
+        return false;
+      },
       handlePaste: (view, event) => {
         const clipboard = event.clipboardData;
         if (!clipboard) {
@@ -500,20 +514,6 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
         return true;
       },
       handleDOMEvents: {
-        keydown: (view, event) => {
-          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-            event.preventDefault();
-
-            if (saveTimeoutRef.current) {
-              clearTimeout(saveTimeoutRef.current);
-            }
-
-            void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content);
-            return true;
-          }
-
-          return false;
-        },
         mousedown: (view, event) => {
           if (!(event instanceof MouseEvent) || event.button !== 0) {
             return false;

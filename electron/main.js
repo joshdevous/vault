@@ -156,8 +156,7 @@ function toSentenceCaseTitle(value) {
     return "";
   }
 
-  const lower = trimmed.toLowerCase();
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 async function apiRequest(pathname, options = {}) {
@@ -267,7 +266,7 @@ async function generateQuickNoteTitle(noteId, text) {
     return;
   }
 
-  const prompt = `You are generating a title for a quick note captured in a personal notes app.\n\nRules:\n- 3 to 6 words\n- describe what the note says\n- do not guess missing context\n- use sentence case only (only the first letter uppercase, not title case)\n- no quotes, no trailing punctuation\n\nQuick note content:\n${text.slice(0, 2500)}`;
+  const prompt = `You are generating a title for a quick note captured in a personal notes app.\n\nRules:\n- 3 to 6 words\n- describe what the note says\n- do not guess missing context\n- use sentence case (not title case)\n- keep proper nouns and acronyms correctly capitalised (example: John, API, London)\n- no quotes, no trailing punctuation\n\nQuick note content:\n${text.slice(0, 2500)}`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",

@@ -583,7 +583,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
   return (
     <aside className="flex flex-col w-60 h-full bg-[#202020] border-r border-[#2f2f2f] shrink-0 select-none">
       {/* Search and quick actions */}
-      <div className="px-2 pt-1 pb-2">
+      <div className="px-2 pt-2 pb-2">
         <div 
           className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           onClick={onOpenSearch}
