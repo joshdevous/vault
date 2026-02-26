@@ -641,7 +641,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
       {/* Search and quick actions */}
       <div className="px-2 pt-2 pb-2">
         <div 
-          className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          className="sidebar-action-row flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           onClick={onOpenSearch}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,7 +650,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <span>Search</span>
         </div>
         <div
-          className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          className="sidebar-action-row flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           onClick={onOpenAI}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -659,7 +659,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <span>AI Chat</span>
         </div>
         <div 
-          className="flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          className="sidebar-action-row flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           onClick={(e) => {
             setCreateMenu({ x: e.clientX, y: e.clientY });
           }}
@@ -681,7 +681,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             {/* NOTES Section */}
             <div className="flex items-center justify-between">
               <div
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
+                className="sidebar-section-label flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
                 onClick={() => toggleSection("notes")}
               >
                 <svg
@@ -751,7 +751,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             {/* VAULT Section */}
             <div className="flex items-center justify-between mt-5">
               <div
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
+                className="sidebar-section-label flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
                 onClick={() => onOpenVault()}
               >
                 <span>Vault</span>
@@ -777,7 +777,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
             {/* MEMORIES Section */}
             <div className="flex items-center justify-between mt-5">
               <div
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
+                className="sidebar-section-label flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
                 onClick={() => onOpenMemories()}
               >
                 <span>Memories</span>
@@ -802,7 +802,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <>
             {/* DREAM JOURNAL Section */}
             <div className="flex items-center justify-between mt-5">
-              <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors">
+              <div className="sidebar-section-label flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors">
                 <span>Dream Journal</span>
               </div>
               <button
@@ -825,7 +825,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
           <>
             {/* VOICE LOG Section */}
             <div className="flex items-center justify-between mt-5">
-              <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors">
+              <div className="sidebar-section-label flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider rounded transition-colors">
                 <span>Voice Log</span>
               </div>
               <button
@@ -853,7 +853,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         {visibleSections.fileCleaner && (
           <button
             onClick={onOpenFileCleaner}
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+            className="sidebar-action-row w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -863,7 +863,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         )}
         <button
           onClick={onOpenArchive}
-          className="w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          className="sidebar-action-row w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -894,7 +894,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
               setIsExporting(false);
             }
           }}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] rounded text-sm ${isExporting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#2f2f2f] cursor-pointer'}`}
+          className={`sidebar-action-row w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] rounded text-sm ${isExporting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#2f2f2f] cursor-pointer'}`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -904,7 +904,7 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
         <button
           onClick={onOpenSettings}
-          className="mt-1 w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          className="sidebar-action-row mt-1 w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.757.426 1.757 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.757-2.924 1.757-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.757-.426-1.757-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />

@@ -36,6 +36,30 @@ a {
     color-scheme: light;
   }
 
+  :root[data-theme="dark"] .sidebar-action-row {
+    color: #9b9b9b !important;
+  }
+
+  :root[data-theme="dark"] .sidebar-section-label {
+    color: #7f7f79 !important;
+  }
+
+  :root[data-theme="dark"] .sidebar-section-label:hover {
+    color: #b0b0aa !important;
+  }
+
+  :root[data-theme="light"] .sidebar-action-row {
+    color: #5e5e57 !important;
+  }
+
+  :root[data-theme="light"] .sidebar-section-label {
+    color: #8a8a82 !important;
+  }
+
+  :root[data-theme="light"] .sidebar-section-label:hover {
+    color: #6f6f67 !important;
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);
