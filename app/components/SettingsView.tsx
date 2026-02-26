@@ -105,11 +105,11 @@ export function SettingsView() {
                   aria-checked={themeMode === "light"}
                   aria-label="Toggle light mode"
                   onClick={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#3a3a3a] bg-[#252525] px-2 py-1 text-xs text-[#d1d1d1]"
+                  className="inline-flex items-center gap-2 border border-[#3a3a3a] bg-transparent px-0 py-0 text-xs text-[#d1d1d1]"
                 >
                   <span className={`${themeMode === "dark" ? "text-[#e3e3e3]" : "text-[#9b9b9b]"}`}>Dark</span>
-                  <span className={`h-4 w-8 rounded-full p-[2px] transition-colors ${themeMode === "light" ? "bg-[#7eb8f7]" : "bg-[#3a3a3a]"}`}>
-                    <span className={`block h-3 w-3 rounded-full bg-white transition-transform ${themeMode === "light" ? "translate-x-4" : "translate-x-0"}`} />
+                  <span className={`h-4 w-8 rounded-full transition-colors ${themeMode === "light" ? "bg-[#7eb8f7]" : "bg-[#3a3a3a]"}`}>
+                    <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${themeMode === "light" ? "translate-x-4" : "translate-x-0"}`} />
                   </span>
                   <span className={`${themeMode === "light" ? "text-[#e3e3e3]" : "text-[#9b9b9b]"}`}>Light</span>
                 </button>
