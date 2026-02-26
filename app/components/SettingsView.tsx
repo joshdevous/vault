@@ -97,15 +97,23 @@ export function SettingsView() {
             <h2 className="text-lg text-[#e3e3e3] font-medium">Appearance</h2>
             <p className="text-sm text-[#9b9b9b]">Choose app theme.</p>
             <div className="rounded border border-[#2f2f2f] bg-[#1e1e1e] p-4 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-[#d1d1d1] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={themeMode === "light"}
-                  onChange={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
-                  className="h-4 w-4 accent-[#7eb8f7]"
-                />
-                <span>Light mode</span>
-              </label>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-[#d1d1d1]">Theme</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={themeMode === "light"}
+                  aria-label="Toggle light mode"
+                  onClick={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#3a3a3a] bg-[#252525] px-2 py-1 text-xs text-[#d1d1d1]"
+                >
+                  <span className={`${themeMode === "dark" ? "text-[#e3e3e3]" : "text-[#9b9b9b]"}`}>Dark</span>
+                  <span className={`h-4 w-8 rounded-full p-[2px] transition-colors ${themeMode === "light" ? "bg-[#7eb8f7]" : "bg-[#3a3a3a]"}`}>
+                    <span className={`block h-3 w-3 rounded-full bg-white transition-transform ${themeMode === "light" ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  <span className={`${themeMode === "light" ? "text-[#e3e3e3]" : "text-[#9b9b9b]"}`}>Light</span>
+                </button>
+              </div>
             </div>
           </section>
 
