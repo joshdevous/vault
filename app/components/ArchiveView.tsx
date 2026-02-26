@@ -144,7 +144,7 @@ export function ArchiveView({ notes, selectedNoteId, onSelectNote, onRestoreNote
                   className="group w-full flex items-center gap-2 px-2 py-1 hover:bg-[#2a2a2a] rounded transition-colors text-left cursor-pointer"
                 >
                   <NoteIcon icon={note.icon} hasContent={note.content.length > 0 && note.content !== "<p></p>"} />
-                  <span className="text-[#9b9b9b] text-sm truncate flex-1">
+                  <span className="note-title-text text-[#9b9b9b] text-sm truncate flex-1">
                     {note.title || "New page"}
                   </span>
                   

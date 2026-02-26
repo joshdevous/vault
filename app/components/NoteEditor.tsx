@@ -959,7 +959,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                     className="w-full flex items-center gap-2 px-2 py-1 hover:bg-[#2a2a2a] rounded transition-colors cursor-pointer text-left"
                   >
                     <NoteIcon icon={child.icon} hasContent={child.content.length > 0 && child.content !== "<p></p>"} />
-                    <span className="text-[#9b9b9b] text-sm truncate">
+                    <span className="note-title-text text-[#9b9b9b] text-sm truncate">
                       {child.title || "New page"}
                     </span>
                   </button>

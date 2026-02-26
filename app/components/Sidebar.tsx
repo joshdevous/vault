@@ -263,7 +263,7 @@ function NoteItem({
             />
           ) : (
             <span 
-              className={`truncate ${hiddenNoteNames.has(note.id) ? "tracking-[0.15em] text-[#6b6b6b]" : ""}`}
+              className={`note-title-text truncate ${hiddenNoteNames.has(note.id) ? "tracking-[0.15em] text-[#6b6b6b]" : ""}`}
               onDoubleClick={(e) => {
                 e.stopPropagation();
                 onStartRename(note.id);

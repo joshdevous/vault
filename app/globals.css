@@ -167,6 +167,10 @@ a {
   background-color: #ddddda !important;
 }
 
+:root[data-theme="light"] [class*="hover:bg-[#2a2a2a]"]:hover {
+  background-color: #e8e8e3 !important;
+}
+
 :root[data-theme="light"] [class*="hover:bg-[#3a3a3a]"]:hover,
 :root[data-theme="light"] [class*="hover:bg-[#3f3f3f]"]:hover {
   background-color: #cecec8 !important;
@@ -275,12 +279,16 @@ a {
 }
 
 :root[data-theme="light"] .ai-history-item-selected {
-  background-color: #ecece6 !important;
+  background-color: #f1f1ec !important;
   color: #2a2a25 !important;
 }
 
 :root[data-theme="light"] .ai-history-item:hover {
   background-color: #efefe9 !important;
+}
+
+:root[data-theme="light"] .note-title-text {
+  color: #4f4f48 !important;
 }
 
 :root[data-theme="light"] .note-filled-icon {
