@@ -1008,12 +1008,12 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
                 className={msg.role === "user" ? "flex justify-end" : ""}
               >
                 {msg.role === "user" ? (
-                  <div className="max-w-[85%] rounded-2xl px-3 py-2 bg-[#3f3f3f] text-[#e3e3e3] text-sm break-words">
+                  <div className="ai-user-bubble max-w-[85%] rounded-2xl px-3 py-2 bg-[#3f3f3f] text-[#e3e3e3] text-sm break-words">
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   </div>
                 ) : (
                   <div>
-                    <div className="prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-2 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+                    <div className="ai-assistant-content prose prose-invert prose-sm max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-2 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0">
                       {msg.content ? (
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       ) : (
@@ -1068,7 +1068,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
           {/* Chat input */}
           <div className="p-4 shrink-0">
-            <div className="flex gap-2 items-end bg-[#252525] rounded-lg border border-[#3f3f3f] p-2">
+            <div className="ai-chat-composer flex gap-2 items-end bg-[#252525] rounded-lg border border-[#3f3f3f] p-2">
               <textarea
                 ref={chatInputRef}
                 value={chatInput}

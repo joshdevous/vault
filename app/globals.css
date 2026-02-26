@@ -249,6 +249,31 @@ a {
   --tw-prose-td-borders: #d9d9d2;
 }
 
+:root[data-theme="light"] .ai-user-bubble {
+  background-color: #ecece7 !important;
+  color: #2a2a25 !important;
+  border: 1px solid #dfdfd8;
+}
+
+:root[data-theme="light"] .ai-assistant-content {
+  color: #2a2a25 !important;
+}
+
+:root[data-theme="light"] .ai-assistant-content :where(code) {
+  background: #e8e8e2 !important;
+  color: #2f2f29 !important;
+}
+
+:root[data-theme="light"] .ai-assistant-content :where(pre) {
+  background: #e8e8e2 !important;
+  border: 1px solid #ddddd5;
+}
+
+:root[data-theme="light"] .ai-chat-composer {
+  background-color: #f1f1ec !important;
+  border-color: #d8d8d1 !important;
+}
+
 :root[data-theme="light"] .note-filled-icon {
   color: #8a8a82 !important;
 }

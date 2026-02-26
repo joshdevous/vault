@@ -1023,7 +1023,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                   className={message.role === "user" ? "flex justify-end" : ""}
                 >
                   {message.role === "user" ? (
-                    <div className="max-w-[80%] rounded-2xl px-4 py-2.5 bg-[#3f3f3f] text-[#e3e3e3]">
+                    <div className="ai-user-bubble max-w-[80%] rounded-2xl px-4 py-2.5 bg-[#3f3f3f] text-[#e3e3e3]">
                       {message.images && message.images.length > 0 && (
                         <div className="flex gap-2 mb-2 flex-wrap">
                           {message.images.map((img, imgIndex) => (
@@ -1040,7 +1040,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                     </div>
                   ) : (
                     <div>
-                      <div className="prose prose-invert prose-base max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
+                      <div className="ai-assistant-content prose prose-invert prose-base max-w-none text-[#e3e3e3] leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_code]:bg-[#2a2a2a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#7eb8f7] [&_pre]:bg-[#2a2a2a] [&_pre]:p-3 [&_pre]:rounded-lg [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:text-[#fff] [&_a]:text-[#7eb8f7]">
                         <ReactMarkdown
                           components={{
                             img: ({ src, alt, ...props }) => {
@@ -1126,7 +1126,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
                 ))}
               </div>
             )}
-            <div className="flex gap-2 items-end bg-[#252525] rounded-lg border border-[#3f3f3f] p-2">
+            <div className="ai-chat-composer flex gap-2 items-end bg-[#252525] rounded-lg border border-[#3f3f3f] p-2">
               {/* Hidden file input */}
               <input
                 ref={fileInputRef}
