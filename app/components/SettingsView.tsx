@@ -98,8 +98,8 @@ export function SettingsView() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg text-[#e3e3e3] font-medium">Autocorrect</h2>
-            <p className="text-sm text-[#9b9b9b]">Enable or disable editor autocorrect.</p>
+            <h2 className="text-lg text-[#e3e3e3] font-medium">Notes</h2>
+            <p className="text-sm text-[#9b9b9b]">Note editor preferences.</p>
             <div className="rounded border border-[#2f2f2f] bg-[#1e1e1e] p-4 space-y-3">
               <label className="flex items-center gap-2 text-sm text-[#d1d1d1] cursor-pointer">
                 <input
