@@ -35,6 +35,7 @@ export function SettingsView() {
   const [sidebarVisibility, setSidebarVisibility] = useState<SidebarVisibilityState>(defaultSidebarVisibility);
   const [autocorrectEnabled, setAutocorrectEnabled] = useState(true);
   const [themeMode, setThemeMode] = useState<"dark" | "light">("dark");
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const savedSidebar = localStorage.getItem(SIDEBAR_VISIBILITY_STORAGE_KEY);
@@ -54,21 +55,35 @@ export function SettingsView() {
     if (savedThemeMode === "light" || savedThemeMode === "dark") {
       setThemeMode(savedThemeMode);
     }
+
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
     localStorage.setItem(SIDEBAR_VISIBILITY_STORAGE_KEY, JSON.stringify(sidebarVisibility));
     window.dispatchEvent(new CustomEvent(SIDEBAR_VISIBILITY_EVENT, { detail: sidebarVisibility }));
-  }, [sidebarVisibility]);
+  }, [sidebarVisibility, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
     localStorage.setItem(AUTOCORRECT_ENABLED_STORAGE_KEY, String(autocorrectEnabled));
-  }, [autocorrectEnabled]);
+  }, [autocorrectEnabled, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
     localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
     window.dispatchEvent(new CustomEvent(THEME_MODE_EVENT, { detail: { mode: themeMode } }));
-  }, [themeMode]);
+  }, [themeMode, hydrated]);
 
   return (
     <div className="flex flex-col h-full">
