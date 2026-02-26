@@ -32,6 +32,7 @@ interface SidebarProps {
   onOpenFileCleaner: () => void;
   onOpenAI: () => void;
   onOpenSearch: () => void;
+  onOpenSettings: () => void;
   onUpdateNote: (note: Note) => void;
   notes: Note[];
 }
@@ -366,16 +367,7 @@ const defaultSidebarVisibility: SidebarVisibilityState = {
   fileCleaner: true,
 };
 
-const sidebarSectionLabels: Record<SidebarVisibilityKey, string> = {
-  notes: "Notes",
-  vault: "Vault",
-  memories: "Memories",
-  dreamJournal: "Dream Journal",
-  voiceLog: "Voice Log",
-  fileCleaner: "File Cleaner",
-};
-
-export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onMoveNote, onOpenVault, onOpenVaultAddModal, onOpenMemories, onOpenMemoryAddModal, onOpenArchive, onOpenFileCleaner, onOpenAI, onOpenSearch, onUpdateNote, notes }: SidebarProps) {
+export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onRenameNote, onMoveNote, onOpenVault, onOpenVaultAddModal, onOpenMemories, onOpenMemoryAddModal, onOpenArchive, onOpenFileCleaner, onOpenAI, onOpenSearch, onOpenSettings, onUpdateNote, notes }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
     vault: true,
@@ -384,7 +376,6 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
     voiceLog: true,
   });
   const [visibleSections, setVisibleSections] = useState<SidebarVisibilityState>(defaultSidebarVisibility);
-  const [isSidebarSettingsOpen, setIsSidebarSettingsOpen] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -428,6 +419,26 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
       setHiddenNoteNames(new Set(JSON.parse(savedHiddenNames)));
     }
     setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    const handleSidebarVisibilityUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<Partial<SidebarVisibilityState>>;
+      const detail = customEvent.detail;
+      if (!detail || typeof detail !== "object") {
+        return;
+      }
+
+      setVisibleSections({
+        ...defaultSidebarVisibility,
+        ...detail,
+      });
+    };
+
+    window.addEventListener("vault-sidebar-visibility-updated", handleSidebarVisibilityUpdated as EventListener);
+    return () => {
+      window.removeEventListener("vault-sidebar-visibility-updated", handleSidebarVisibilityUpdated as EventListener);
+    };
   }, []);
 
   // Close context menu on click outside
@@ -501,10 +512,6 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
 
   const toggleSection = (section: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const toggleVisibleSection = (section: SidebarVisibilityKey) => {
-    setVisibleSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
   const toggleNoteExpand = (id: string) => {
@@ -896,30 +903,15 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
         </button>
 
         <button
-          onClick={() => setIsSidebarSettingsOpen((prev) => !prev)}
-          className="mt-1 w-full flex items-center justify-between gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
+          onClick={onOpenSettings}
+          className="mt-1 w-full flex items-center gap-2 px-2 py-1.5 text-[#9b9b9b] hover:bg-[#2f2f2f] rounded cursor-pointer text-sm"
         >
-          <span>Sidebar settings</span>
-          <svg className={`w-3 h-3 transition-transform ${isSidebarSettingsOpen ? "rotate-90" : ""}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.757.426 1.757 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.757-2.924 1.757-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.757-.426-1.757-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
+          <span>Settings</span>
         </button>
-
-        {isSidebarSettingsOpen && (
-          <div className="mt-1 rounded border border-[#2f2f2f] bg-[#1c1c1c] p-2 flex flex-col gap-1">
-            {(Object.keys(sidebarSectionLabels) as SidebarVisibilityKey[]).map((sectionKey) => (
-              <label key={sectionKey} className="flex items-center gap-2 text-xs text-[#b5b5b5] cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={visibleSections[sectionKey]}
-                  onChange={() => toggleVisibleSection(sectionKey)}
-                  className="h-3.5 w-3.5 accent-[#7eb8f7]"
-                />
-                <span>{sidebarSectionLabels[sectionKey]}</span>
-              </label>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Context Menu */}

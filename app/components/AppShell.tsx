@@ -11,9 +11,10 @@ import { ArchiveView } from "./ArchiveView";
 import { FileCleanerView } from "./FileCleanerView";
 import { AIView } from "./AIView";
 import { SearchModal } from "./SearchModal";
+import { SettingsView } from "./SettingsView";
 import { Note, VaultItem, Occasion } from "@/types/models";
 
-type ViewType = "home" | "note" | "vault" | "memories" | "archive" | "fileCleaner" | "ai";
+type ViewType = "home" | "note" | "vault" | "memories" | "archive" | "fileCleaner" | "ai" | "settings";
 
 export function AppShell() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -369,6 +370,12 @@ export function AppShell() {
     setIsSearchModalOpen(true);
   };
 
+  // Open settings view
+  const handleOpenSettings = () => {
+    setSelectedNoteId(null);
+    setCurrentView("settings");
+  };
+
   useEffect(() => {
     const handleSearchShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -689,6 +696,7 @@ export function AppShell() {
         onOpenFileCleaner={handleOpenFileCleaner}
         onOpenAI={handleOpenAI}
         onOpenSearch={handleOpenSearch}
+        onOpenSettings={handleOpenSettings}
         onUpdateNote={handleUpdateNote}
       />
       <main className="flex-1 overflow-auto bg-[#191919]">
@@ -742,6 +750,8 @@ export function AppShell() {
           <AIView
             onBack={() => setCurrentView("home")}
           />
+        ) : currentView === "settings" ? (
+          <SettingsView />
         ) : (
           <div className="flex flex-col h-full">
             {/* Top bar */}
