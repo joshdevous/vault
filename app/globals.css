@@ -85,38 +85,60 @@ a {
 }
 
 :root[data-theme="light"] [class*="bg-[#191919]"],
-:root[data-theme="light"] [class*="bg-[#1c1c1c]"],
+:root[data-theme="light"] [class*="bg-[#171717]"] {
+  background-color: #fcfcfd !important;
+}
+
+:root[data-theme="light"] [class*="bg-[#1c1c1c]"] {
+  background-color: #f8f9fb !important;
+}
+
 :root[data-theme="light"] [class*="bg-[#1e1e1e]"],
-:root[data-theme="light"] [class*="bg-[#202020]"],
-:root[data-theme="light"] [class*="bg-[#252525]"],
+:root[data-theme="light"] [class*="bg-[#202020]"] {
+  background-color: #f4f6f9 !important;
+}
+
+:root[data-theme="light"] [class*="bg-[#252525]"] {
+  background-color: #eef2f6 !important;
+}
+
 :root[data-theme="light"] [class*="bg-[#2a2a2a]"] {
-  background-color: #f1f1f1 !important;
+  background-color: #e9eef5 !important;
+}
+
+:root[data-theme="light"] [class*="bg-[#2f2f2f]"],
+:root[data-theme="light"] [class*="bg-[rgba(255,255,255,0.055)]"] {
+  background-color: #e3e9f2 !important;
 }
 
 :root[data-theme="light"] [class*="hover:bg-[#2f2f2f]"]:hover,
 :root[data-theme="light"] [class*="hover:bg-[rgba(255,255,255,0.055)]"]:hover {
-  background-color: #e6e6e6 !important;
+  background-color: #d8e1ed !important;
 }
 
 :root[data-theme="light"] [class*="border-[#2f2f2f]"],
 :root[data-theme="light"] [class*="border-[#3a3a3a]"] {
-  border-color: #d7d7d7 !important;
+  border-color: #cbd5e1 !important;
 }
 
 :root[data-theme="light"] [class*="text-[#e3e3e3]"],
 :root[data-theme="light"] [class*="text-[#ebebeb]"] {
-  color: #1f1f1f !important;
+  color: #13202e !important;
 }
 
 :root[data-theme="light"] [class*="text-[#9b9b9b]"],
 :root[data-theme="light"] [class*="text-[#b5b5b5]"],
 :root[data-theme="light"] [class*="text-[#d1d1d1]"] {
-  color: #5f5f5f !important;
+  color: #5b6b7d !important;
+}
+
+:root[data-theme="light"] [class*="text-[#7eb8f7]"] {
+  color: #2563eb !important;
 }
 
 :root[data-theme="light"] .tiptap p.is-editor-empty:first-child::before,
 :root[data-theme="light"] .tiptap p.is-empty::before {
-  color: #8a8a8a;
+  color: #94a3b8;
 }
 
 :root[data-theme="light"] .tiptap ul > li::marker,
@@ -129,26 +151,39 @@ a {
 }
 
 :root[data-theme="light"] .tiptap blockquote {
-  border-left-color: #c9c9c9 !important;
-  color: #5f5f5f;
+  border-left-color: #bfccdc !important;
+  color: #5b6b7d;
 }
 
 :root[data-theme="light"] .tiptap hr {
-  border-top-color: #d7d7d7;
+  border-top-color: #cbd5e1;
+}
+
+:root[data-theme="light"] .tiptap code {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: #1e3a8a;
+}
+
+:root[data-theme="light"] .tiptap pre {
+  background: #eaf0f7 !important;
+}
+
+:root[data-theme="light"] .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  border-color: #94a3b8;
 }
 
 :root[data-theme="light"] * {
-  scrollbar-color: #b3b3b3 transparent;
+  scrollbar-color: #94a3b8 transparent;
 }
 
 :root[data-theme="light"] *::-webkit-scrollbar-thumb {
-  background: #b3b3b3;
+  background: #94a3b8;
   border: 3px solid transparent;
   background-clip: padding-box;
 }
 
 :root[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
-  background: #9d9d9d;
+  background: #7f93aa;
   border: 3px solid transparent;
   background-clip: padding-box;
 }
