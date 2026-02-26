@@ -66,6 +66,11 @@ export const AutoCorrect = Extension.create({
             }
 
             const word = wordMatch[1];
+
+            // Skip capitalised words (likely names/proper nouns)
+            if (/^[A-Z]/.test(word)) {
+              return false;
+            }
             
             // Skip very short words (1-2 chars) - too risky
             if (word.length < 3) {
@@ -74,7 +79,6 @@ export const AutoCorrect = Extension.create({
 
             // Store info for async correction
             const wordStart = from - word.length;
-            const typedText = text;
             
             // Let the input go through immediately - don't block
             // Then check spelling async
