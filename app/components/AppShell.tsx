@@ -369,6 +369,28 @@ export function AppShell() {
     setIsSearchModalOpen(true);
   };
 
+  useEffect(() => {
+    const handleSearchShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable;
+
+      if (isTypingTarget) {
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setIsSearchModalOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleSearchShortcut);
+    return () => window.removeEventListener("keydown", handleSearchShortcut);
+  }, []);
+
   // Rename note (optimistic update)
   const handleRenameNote = async (id: string, newTitle: string) => {
     // Optimistic update - update immediately
