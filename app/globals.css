@@ -27,7 +27,7 @@ a {
   :root[data-theme="light"] {
     --background: #f7f7f7;
     --foreground: #1f1f1f;
-    --sidebar-bg: #f1f1f1;
+    --sidebar-bg: #f7f7f5;
     --sidebar-hover: #e6e6e6;
     --sidebar-text: #4a4a4a;
     --sidebar-text-active: #1f1f1f;
@@ -106,9 +106,12 @@ a {
   background-color: #e9eef5 !important;
 }
 
-:root[data-theme="light"] [class*="bg-[#2f2f2f]"],
-:root[data-theme="light"] [class*="bg-[rgba(255,255,255,0.055)]"] {
+:root[data-theme="light"] [class*="bg-[#2f2f2f]"] {
   background-color: #e3e9f2 !important;
+}
+
+:root[data-theme="light"] aside[class*="bg-[#202020]"] {
+  background-color: #f7f7f5 !important;
 }
 
 :root[data-theme="light"] [class*="hover:bg-[#2f2f2f]"]:hover,
