@@ -558,6 +558,8 @@ a {
 
 .sheet-note-grid {
   background: #111111;
+  width: 100%;
+  height: 100%;
 }
 
 .sheet-note-grid .Spreadsheet {
@@ -568,15 +570,19 @@ a {
   --border-color: #262626;
   --outline-color: #3b82f6;
   --outline-background-color: rgba(59, 130, 246, 0.14);
-  width: max-content;
+  display: block;
+  width: 100%;
   min-width: 100%;
   min-height: 100%;
   font-size: 13px;
+  background: #151515;
+  color: #f0f0f0;
 }
 
-.sheet-note-grid .Spreadsheet table {
+.sheet-note-grid .Spreadsheet table,
+.sheet-note-grid .Spreadsheet .Spreadsheet__table {
   border-collapse: collapse;
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   background: #111111;
 }
@@ -598,9 +604,16 @@ a {
   font-size: 11px;
 }
 
+.sheet-note-grid .Spreadsheet .Spreadsheet__data-viewer,
+.sheet-note-grid .Spreadsheet .Spreadsheet__data-editor input {
+  background: #151515 !important;
+  color: #f0f0f0 !important;
+}
+
 :root[data-theme="light"] .sheet-note-grid,
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet,
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet table,
+:root[data-theme="light"] .sheet-note-grid .Spreadsheet .Spreadsheet__table,
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet .Spreadsheet__cell,
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet .Spreadsheet__header {
   background: #111111 !important;
@@ -608,9 +621,25 @@ a {
   border-color: #262626 !important;
 }
 
+:root[data-theme="light"] .sheet-note-grid .Spreadsheet {
+  --background-color: #151515 !important;
+  --text-color: #f0f0f0 !important;
+  --readonly-text-color: #a5a5a5 !important;
+  --header-background-color: #1d1d1d !important;
+  --border-color: #262626 !important;
+  --outline-color: #3b82f6 !important;
+  --outline-background-color: rgba(59, 130, 246, 0.14) !important;
+}
+
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet .Spreadsheet__header {
   background: #1d1d1d !important;
   color: #a5a5a5 !important;
+}
+
+:root[data-theme="light"] .sheet-note-grid .Spreadsheet .Spreadsheet__data-viewer,
+:root[data-theme="light"] .sheet-note-grid .Spreadsheet .Spreadsheet__data-editor input {
+  background: #151515 !important;
+  color: #f0f0f0 !important;
 }
 
 @theme inline {
