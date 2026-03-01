@@ -195,14 +195,27 @@ export async function POST(request: NextRequest) {
     // If noteContext is provided, use it directly; otherwise search for relevant context
     let contextSection = "";
     if (noteContext) {
-      // Direct note context mode (from in-note AI chat)
-      contextSection = `You are helping the user with their note titled "${noteContext.title}".
+      const noteType = noteContext.type === "spreadsheet" ? "spreadsheet" : "note";
+
+      if (noteType === "spreadsheet") {
+        // Direct spreadsheet context mode (from in-note AI chat)
+        contextSection = `You are helping the user with a spreadsheet titled "${noteContext.title}".
+
+Here is the current spreadsheet content represented as tab-separated rows:
+
+${noteContext.content}
+
+Treat this as spreadsheet data, not prose. Focus on cells, rows, columns, ranges, formulas, totals, data cleaning, and structure. When useful, reference specific columns/rows and suggest concrete formulas or table layouts. Be concise and direct. Use British English spelling.`;
+      } else {
+        // Direct note context mode (from in-note AI chat)
+        contextSection = `You are helping the user with their note titled "${noteContext.title}".
 
 Here is the full content of the note:
 
 ${noteContext.content}
 
 Answer questions about this note, help expand on ideas, suggest improvements, or assist with whatever the user needs regarding this content. Be concise and direct. Use British English spelling.`;
+      }
     } else {
       // Standard mode - search for relevant context
       const relevantContext = await getRelevantContext(contextQuery);

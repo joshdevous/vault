@@ -862,6 +862,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           model: "openai/gpt-4o-mini",
           noteContext: {
             title: title || "New page",
+            type: isSpreadsheetNote ? "spreadsheet" : "note",
             content: noteContent,
           },
         }),
@@ -968,6 +969,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           model: "openai/gpt-4o-mini",
           noteContext: {
             title: title || "New page",
+            type: isSpreadsheetNote ? "spreadsheet" : "note",
             content: noteContent,
           },
         }),
