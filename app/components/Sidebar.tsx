@@ -20,7 +20,7 @@ interface ContextMenuState {
 interface SidebarProps {
   selectedNoteId?: string | null;
   onSelectNote: (id: string) => void;
-  onCreateNote: (parentId?: string) => void;
+  onCreateNote: (parentId?: string, kind?: "note" | "spreadsheet") => void;
   onArchiveNote: (id: string) => void;
   onRenameNote: (id: string, newTitle: string) => void;
   onMoveNote: (noteId: string, newParentId: string | null, newOrder: number) => void;
@@ -87,7 +87,7 @@ interface NoteItemProps {
   onToggleExpand: (id: string) => void;
   onExpandNote: (id: string) => void;
   onSelectNote: (id: string) => void;
-  onCreateNote: (parentId?: string) => void;
+  onCreateNote: (parentId?: string, kind?: "note" | "spreadsheet") => void;
   onArchiveNote: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, noteId: string) => void;
   onStartRename: (id: string) => void;
@@ -113,9 +113,34 @@ function NoteIcon({ icon, hasContent }: { icon: string; hasContent: boolean }) {
       />
     );
   }
+
+  const isSpreadsheetIcon = icon === "sheet" || icon === "📊";
+  if (isSpreadsheetIcon) {
+    if (hasContent) {
+      return (
+        <svg className="w-4 h-4 shrink-0 text-[#9b9b9b] note-filled-icon" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="3" y="3" width="18" height="18" rx="2.5" ry="2.5" />
+          <line className="note-filled-icon-line" x1="9" y1="3" x2="9" y2="21" stroke="#202020" strokeWidth="1.4" />
+          <line className="note-filled-icon-line" x1="15" y1="3" x2="15" y2="21" stroke="#202020" strokeWidth="1.4" />
+          <line className="note-filled-icon-line" x1="3" y1="9" x2="21" y2="9" stroke="#202020" strokeWidth="1.4" />
+          <line className="note-filled-icon-line" x1="3" y1="15" x2="21" y2="15" stroke="#202020" strokeWidth="1.4" />
+        </svg>
+      );
+    }
+
+    return (
+      <svg className="w-4 h-4 shrink-0 text-[#6b6b6b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2.5" ry="2.5" />
+        <line x1="9" y1="3" x2="9" y2="21" />
+        <line x1="15" y1="3" x2="15" y2="21" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="3" y1="15" x2="21" y2="15" />
+      </svg>
+    );
+  }
   
   // Emoji icon (any non-default value that's not an image)
-  if (icon && icon !== "📄") {
+  if (icon && icon !== "📄" && icon !== "sheet" && icon !== "📊") {
     return (
       <span
         className="w-4 h-4 shrink-0 text-sm leading-none flex items-center justify-center text-[#ebebeb] opacity-100"
@@ -1006,6 +1031,22 @@ export function Sidebar({ selectedNoteId, onSelectNote, onCreateNote, onArchiveN
                   <polyline points="14,2 14,8 20,8"/>
                 </svg>
                 Note
+              </button>
+              <button
+                className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
+                onClick={() => {
+                  onCreateNote(undefined, "spreadsheet");
+                  setCreateMenu(null);
+                }}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <path d="M3 9h18"/>
+                  <path d="M3 15h18"/>
+                  <path d="M9 3v18"/>
+                  <path d="M15 3v18"/>
+                </svg>
+                Spreadsheet
               </button>
               <button
                 className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"

@@ -11,6 +11,8 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+import Spreadsheet from "react-spreadsheet";
+import type { Matrix } from "react-spreadsheet";
 import ReactMarkdown from "react-markdown";
 import { AutoCorrect } from "@/app/extensions/AutoCorrect";
 import { Note } from "@/types/models";
@@ -18,6 +20,65 @@ import { Note } from "@/types/models";
 // Storage keys
 const OPENROUTER_API_KEY_STORAGE_KEY = "vault-openrouter-api-key";
 const LEGACY_OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
+const SPREADSHEET_CONTENT_PREFIX = "vault:sheet:v1:";
+const DEFAULT_SPREADSHEET_ROWS = 30;
+const DEFAULT_SPREADSHEET_COLS = 12;
+
+type SpreadsheetCell = { value: string };
+
+function createDefaultSpreadsheetData(rows = DEFAULT_SPREADSHEET_ROWS, cols = DEFAULT_SPREADSHEET_COLS): string[][] {
+  return Array.from({ length: rows }, () => Array.from({ length: cols }, () => ""));
+}
+
+function isSpreadsheetContent(content: string): boolean {
+  return content.startsWith(SPREADSHEET_CONTENT_PREFIX);
+}
+
+function normalizeSpreadsheetData(raw: string[][]): string[][] {
+  const rowCount = Math.max(raw.length, DEFAULT_SPREADSHEET_ROWS);
+  const colCount = Math.max(
+    DEFAULT_SPREADSHEET_COLS,
+    ...raw.map((row) => row.length)
+  );
+
+  return Array.from({ length: rowCount }, (_, rowIndex) =>
+    Array.from({ length: colCount }, (_, colIndex) => raw[rowIndex]?.[colIndex] ?? "")
+  );
+}
+
+function parseSpreadsheetContent(content: string): string[][] {
+  if (!isSpreadsheetContent(content)) {
+    return createDefaultSpreadsheetData();
+  }
+
+  try {
+    const payload = content.slice(SPREADSHEET_CONTENT_PREFIX.length);
+    const parsed = JSON.parse(payload);
+
+    if (!Array.isArray(parsed)) {
+      return createDefaultSpreadsheetData();
+    }
+
+    const rows = parsed.map((row) =>
+      Array.isArray(row) ? row.map((cell) => (typeof cell === "string" ? cell : "")) : []
+    );
+
+    return normalizeSpreadsheetData(rows);
+  } catch {
+    return createDefaultSpreadsheetData();
+  }
+}
+
+function serializeSpreadsheetContent(data: string[][]): string {
+  return `${SPREADSHEET_CONTENT_PREFIX}${JSON.stringify(data)}`;
+}
+
+function spreadsheetDataToPlainText(data: string[][]): string {
+  return data
+    .map((row) => row.join("\t").trimEnd())
+    .filter((row) => row.length > 0)
+    .join("\n");
+}
 
 // Strip HTML for plain text
 function stripHtml(html: string): string {
@@ -126,9 +187,34 @@ function NoteIcon({ icon, hasContent, className = "" }: {
       />
     );
   }
+
+  const isSpreadsheetIcon = icon === "sheet" || icon === "📊";
+  if (isSpreadsheetIcon) {
+    if (hasContent) {
+      return (
+        <svg className={`w-4 h-4 shrink-0 text-[#9b9b9b] note-filled-icon ${className}`} viewBox="0 0 24 24" fill="currentColor">
+          <rect x="3" y="3" width="18" height="18" rx="2.5" ry="2.5" />
+          <line className="note-filled-icon-line" x1="9" y1="3" x2="9" y2="21" stroke="#202020" strokeWidth="1.4" />
+          <line className="note-filled-icon-line" x1="15" y1="3" x2="15" y2="21" stroke="#202020" strokeWidth="1.4" />
+          <line className="note-filled-icon-line" x1="3" y1="9" x2="21" y2="9" stroke="#202020" strokeWidth="1.4" />
+          <line className="note-filled-icon-line" x1="3" y1="15" x2="21" y2="15" stroke="#202020" strokeWidth="1.4" />
+        </svg>
+      );
+    }
+
+    return (
+      <svg className={`w-4 h-4 shrink-0 text-[#6b6b6b] ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2.5" ry="2.5" />
+        <line x1="9" y1="3" x2="9" y2="21" />
+        <line x1="15" y1="3" x2="15" y2="21" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="3" y1="15" x2="21" y2="15" />
+      </svg>
+    );
+  }
   
   // Emoji icon (any non-default value that's not an image)
-  if (icon && icon !== "📄") {
+  if (icon && icon !== "📄" && icon !== "sheet" && icon !== "📊") {
     return (
       <span className={`w-4 h-4 shrink-0 text-sm leading-none flex items-center justify-center ${className}`}>
         {icon}
@@ -162,11 +248,15 @@ export interface ChatMessage {
   content: string;
 }
 
+type SaveOptions = {
+  silent?: boolean;
+  skipParentUpdate?: boolean;
+};
+
 interface NoteEditorProps {
   note: Note;
   allNotes: Note[];
   onUpdate: (note: Note) => void;
-  onDelete: (id: string) => void;
   onSelectNote: (id: string) => void;
   chatOpenStates: Map<string, boolean>;
   setChatOpenStates: React.Dispatch<React.SetStateAction<Map<string, boolean>>>;
@@ -174,15 +264,29 @@ interface NoteEditorProps {
   setAllChatMessages: React.Dispatch<React.SetStateAction<Map<string, ChatMessage[]>>>;
 }
 
-export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, chatOpenStates, setChatOpenStates, allChatMessages, setAllChatMessages }: NoteEditorProps) {
+export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenStates, setChatOpenStates, allChatMessages, setAllChatMessages }: NoteEditorProps) {
   const [title, setTitle] = useState(note.title);
+  const isSpreadsheetNote = useMemo(() => isSpreadsheetContent(note.content || ""), [note.content]);
+  const [spreadsheetData, setSpreadsheetData] = useState<string[][]>(() =>
+    parseSpreadsheetContent(note.content || "")
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const spreadsheetSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const spreadsheetDraftRef = useRef<string[][]>(
+    parseSpreadsheetContent(note.content || "")
+  );
+  const lastSpreadsheetNoteIdRef = useRef(note.id);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const saveNoteRef = useRef<(newTitle: string, newContent: string) => Promise<void>>(async () => {});
+  const saveNoteRef = useRef<(newTitle: string, newContent: string, options?: SaveOptions) => Promise<void>>(async () => {});
   const uploadNoteImageRef = useRef<(file: File) => Promise<string | null>>(async () => null);
   const lastLocalEditorHtmlRef = useRef(note.content || "");
+  const lastSpreadsheetSerializedRef = useRef(
+    isSpreadsheetContent(note.content || "")
+      ? serializeSpreadsheetContent(parseSpreadsheetContent(note.content || ""))
+      : ""
+  );
 
   // AI Chat state - local per-render state
   const [chatInput, setChatInput] = useState("");
@@ -203,10 +307,15 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
   };
 
   // Get current note's chat messages
-  const chatMessages = allChatMessages.get(note.id) || [];
+  const chatMessages = useMemo(() => allChatMessages.get(note.id) || [], [allChatMessages, note.id]);
   const lastAssistantMessageId = useMemo(
     () => [...chatMessages].reverse().find((msg) => msg.role === "assistant")?.id ?? null,
     [chatMessages]
+  );
+
+  const spreadsheetMatrix = useMemo<Matrix<SpreadsheetCell>>(
+    () => spreadsheetData.map((row) => row.map((value) => ({ value }))),
+    [spreadsheetData]
   );
 
   const setChatMessages = (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
@@ -235,12 +344,33 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
     setTitle(note.title);
   }, [note.title]);
 
+  useEffect(() => {
+    if (!isSpreadsheetNote) {
+      return;
+    }
+
+    const incoming = parseSpreadsheetContent(note.content || "");
+    const serializedIncoming = serializeSpreadsheetContent(incoming);
+
+    const isSameNote = lastSpreadsheetNoteIdRef.current === note.id;
+    lastSpreadsheetNoteIdRef.current = note.id;
+
+    if (isSameNote && serializedIncoming === lastSpreadsheetSerializedRef.current) {
+      return;
+    }
+
+    setSpreadsheetData(incoming);
+    spreadsheetDraftRef.current = incoming;
+    lastLocalEditorHtmlRef.current = serializedIncoming;
+    lastSpreadsheetSerializedRef.current = serializedIncoming;
+  }, [isSpreadsheetNote, note.id, note.content]);
+
   // Auto-focus title input when opening a new/empty note
   useEffect(() => {
-    if (note.title === "" && note.content === "") {
+    if (note.title === "" && (note.content === "" || isSpreadsheetNote)) {
       titleInputRef.current?.focus();
     }
-  }, [note.id, note.title, note.content]);
+  }, [isSpreadsheetNote, note.id, note.title, note.content]);
 
   // Build breadcrumb trail from current note to root
   const breadcrumbs = useMemo(() => {
@@ -367,8 +497,14 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
   }, []);
 
   // Auto-save function
-  const saveNote = useCallback(async (newTitle: string, newContent: string) => {
-    setIsSaving(true);
+  const saveNote = useCallback(async (newTitle: string, newContent: string, options?: SaveOptions) => {
+    const silent = options?.silent === true;
+    const skipParentUpdate = options?.skipParentUpdate === true;
+
+    if (!silent) {
+      setIsSaving(true);
+    }
+
     try {
       const res = await fetch(`/api/notes/${note.id}`, {
         method: "PATCH",
@@ -378,13 +514,20 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
       if (res.ok) {
         const updatedNote = await res.json();
-        setLastSaved(new Date());
-        onUpdate(updatedNote);
+        if (!silent) {
+          setLastSaved(new Date());
+        }
+
+        if (!skipParentUpdate) {
+          onUpdate(updatedNote);
+        }
       }
     } catch (error) {
       console.error("Failed to save note:", error);
     } finally {
-      setIsSaving(false);
+      if (!silent) {
+        setIsSaving(false);
+      }
     }
   }, [note.id, onUpdate]);
 
@@ -435,7 +578,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
       }),
       AutoCorrect,
     ],
-    content: note.content,
+    content: isSpreadsheetNote ? "<p></p>" : note.content,
+    editable: !isSpreadsheetNote,
     editorProps: {
       attributes: {
         class: "prose prose-invert max-w-none focus:outline-none h-full min-h-[120px] text-[#e3e3e3] text-base leading-relaxed",
@@ -585,6 +729,10 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
       },
     },
     onUpdate: ({ editor }) => {
+      if (isSpreadsheetNote) {
+        return;
+      }
+
       const html = editor.getHTML();
       lastLocalEditorHtmlRef.current = html;
       
@@ -598,11 +746,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
         void saveNoteRef.current(titleRef.current, html);
       }, 500);
     },
-  }, [insertImageWithParagraph, note.id]);
+  }, [insertImageWithParagraph, isSpreadsheetNote, note.id]);
 
   // Update editor content when note changes, including external updates to same note
   useEffect(() => {
-    if (!editor) {
+    if (isSpreadsheetNote || !editor) {
       return;
     }
 
@@ -619,7 +767,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
     editor.commands.setContent(incomingHtml);
     lastLocalEditorHtmlRef.current = incomingHtml;
-  }, [note.id, note.content, editor]);
+  }, [isSpreadsheetNote, note.id, note.content, editor]);
 
   // Update title ref for save function
   const titleRef = useRef(title);
@@ -642,7 +790,10 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
     // Set new timeout for auto-save (500ms debounce)
     saveTimeoutRef.current = setTimeout(() => {
-      saveNote(newTitle, editor?.getHTML() || note.content);
+      const content = isSpreadsheetNote
+        ? serializeSpreadsheetContent(spreadsheetData)
+        : (editor?.getHTML() || note.content);
+      saveNote(newTitle, content);
     }, 500);
   };
 
@@ -652,25 +803,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      if (spreadsheetSaveTimeoutRef.current) {
+        clearTimeout(spreadsheetSaveTimeoutRef.current);
+      }
     };
   }, []);
-
-  // Handle delete
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this note?")) return;
-
-    try {
-      const res = await fetch(`/api/notes/${note.id}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        onDelete(note.id);
-      }
-    } catch (error) {
-      console.error("Failed to delete note:", error);
-    }
-  };
 
   // Send chat message with note as context
   const handleSendChat = async () => {
@@ -712,7 +849,9 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
         content: m.content,
       }));
 
-      const noteContent = stripHtml(editor?.getHTML() || note.content);
+      const noteContent = isSpreadsheetNote
+        ? spreadsheetDataToPlainText(spreadsheetData)
+        : stripHtml(editor?.getHTML() || note.content);
 
       const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -816,7 +955,9 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
         content: msg.content,
       }));
 
-      const noteContent = stripHtml(editor?.getHTML() || note.content);
+      const noteContent = isSpreadsheetNote
+        ? spreadsheetDataToPlainText(spreadsheetData)
+        : stripHtml(editor?.getHTML() || note.content);
 
       const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -921,36 +1062,42 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
 
         {/* Editor content */}
         <div className="flex-1 overflow-auto">
-          <div className="max-w-3xl mx-auto px-16 py-12 h-full flex flex-col">
+          <div className={isSpreadsheetNote ? "h-full flex flex-col" : "max-w-3xl mx-auto px-16 py-12 h-full flex flex-col"}>
             {/* Title */}
-            <input
-              type="text"
-              value={title}
-              onChange={handleTitleChange}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                  e.preventDefault();
+            {!isSpreadsheetNote && (
+              <input
+                type="text"
+                value={title}
+                onChange={handleTitleChange}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
 
-                  if (saveTimeoutRef.current) {
-                    clearTimeout(saveTimeoutRef.current);
+                    if (saveTimeoutRef.current) {
+                      clearTimeout(saveTimeoutRef.current);
+                    }
+
+                    const content = isSpreadsheetNote
+                      ? serializeSpreadsheetContent(spreadsheetData)
+                      : (editor?.getHTML() || note.content);
+
+                    void saveNoteRef.current(titleRef.current, content);
+                    return;
                   }
 
-                  void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content);
-                  return;
-                }
-
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  editor?.chain().focus().setTextSelection(0).run();
-                }
-              }}
-              ref={titleInputRef}
-              placeholder="New page"
-              className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none placeholder-[#4a4a4a] mb-4 leading-tight"
-            />
+                  if (e.key === "Enter" && !isSpreadsheetNote) {
+                    e.preventDefault();
+                    editor?.chain().focus().setTextSelection(0).run();
+                  }
+                }}
+                ref={titleInputRef}
+                placeholder="New page"
+                className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none placeholder-[#4a4a4a] mb-4 leading-tight"
+              />
+            )}
 
             {/* Sub-pages list */}
-            {childPages.length > 0 && (
+            {!isSpreadsheetNote && childPages.length > 0 && (
               <div className="mb-6 -mx-2">
                 {childPages.map((child) => (
                   <button
@@ -967,8 +1114,41 @@ export function NoteEditor({ note, allNotes, onUpdate, onDelete, onSelectNote, c
               </div>
             )}
 
-            {/* Rich Text Editor */}
-            <EditorContent editor={editor} className="flex-1" />
+            {isSpreadsheetNote ? (
+              <div className="sheet-note-grid flex-1 overflow-auto bg-[#111111]">
+                <Spreadsheet
+                  data={spreadsheetMatrix}
+                  onChange={(nextData) => {
+                    const source = nextData ?? [];
+                    const normalized = normalizeSpreadsheetData(
+                      source.map((row) => row.map((cell) => cell?.value ?? ""))
+                    );
+
+                    spreadsheetDraftRef.current = normalized;
+                    setSpreadsheetData(normalized);
+
+                    if (spreadsheetSaveTimeoutRef.current) {
+                      clearTimeout(spreadsheetSaveTimeoutRef.current);
+                    }
+
+                    spreadsheetSaveTimeoutRef.current = setTimeout(() => {
+                      const serialized = serializeSpreadsheetContent(spreadsheetDraftRef.current);
+                      if (serialized === lastSpreadsheetSerializedRef.current) {
+                        return;
+                      }
+
+                      lastSpreadsheetSerializedRef.current = serialized;
+                      void saveNoteRef.current(titleRef.current, serialized, {
+                        silent: true,
+                        skipParentUpdate: true,
+                      });
+                    }, 1200);
+                  }}
+                />
+              </div>
+            ) : (
+              <EditorContent editor={editor} className="flex-1" />
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const SPREADSHEET_CONTENT_PREFIX = "vault:sheet:v1:";
+
+function createDefaultSpreadsheetContent(rows = 30, cols = 12): string {
+  const data = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => "")
+  );
+
+  return `${SPREADSHEET_CONTENT_PREFIX}${JSON.stringify(data)}`;
+}
+
 // GET all notes (returns flat list, client builds tree)
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const parentId = body.parentId || null;
+    const kind = body.kind === "spreadsheet" ? "spreadsheet" : "note";
     
     // Get the highest order among siblings
     const maxOrderNote = await prisma.note.findFirst({
@@ -34,8 +45,8 @@ export async function POST(request: NextRequest) {
     const note = await prisma.note.create({
       data: {
         title: "",
-        content: "",
-        icon: "📄",
+        content: kind === "spreadsheet" ? createDefaultSpreadsheetContent() : "",
+        icon: kind === "spreadsheet" ? "sheet" : "📄",
         parentId,
         order: newOrder,
       },
