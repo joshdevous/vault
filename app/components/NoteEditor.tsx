@@ -26,7 +26,7 @@ const DEFAULT_SPREADSHEET_COLS = 12;
 
 type SpreadsheetCell = { value: string };
 
-function applySheetInlineFormat(
+function toggleSheetInlineFormat(
   value: string,
   selectionStart: number,
   selectionEnd: number,
@@ -34,10 +34,55 @@ function applySheetInlineFormat(
 ): { nextValue: string; nextSelectionStart: number; nextSelectionEnd: number } {
   const start = Math.max(0, Math.min(selectionStart, selectionEnd));
   const end = Math.max(selectionStart, selectionEnd);
+  const markerLength = marker.length;
+
+  if (start === end) {
+    const hasOuterMarker =
+      value.length >= markerLength * 2 &&
+      value.startsWith(marker) &&
+      value.endsWith(marker);
+
+    if (hasOuterMarker) {
+      const nextValue = value.slice(markerLength, value.length - markerLength);
+      const nextCursor = Math.max(0, start - markerLength);
+      return {
+        nextValue,
+        nextSelectionStart: nextCursor,
+        nextSelectionEnd: nextCursor,
+      };
+    }
+
+    const nextValue = `${marker}${value}${marker}`;
+    const nextCursor = start + markerLength;
+    return {
+      nextValue,
+      nextSelectionStart: nextCursor,
+      nextSelectionEnd: nextCursor,
+    };
+  }
+
+  const hasMarkersAroundSelection =
+    start >= markerLength &&
+    value.slice(start - markerLength, start) === marker &&
+    value.slice(end, end + markerLength) === marker;
+
+  if (hasMarkersAroundSelection) {
+    const nextValue =
+      value.slice(0, start - markerLength) +
+      value.slice(start, end) +
+      value.slice(end + markerLength);
+
+    return {
+      nextValue,
+      nextSelectionStart: start - markerLength,
+      nextSelectionEnd: end - markerLength,
+    };
+  }
+
   const selected = value.slice(start, end);
   const wrapped = `${marker}${selected}${marker}`;
   const nextValue = `${value.slice(0, start)}${wrapped}${value.slice(end)}`;
-  const cursorStart = start + marker.length;
+  const cursorStart = start + markerLength;
   const cursorEnd = cursorStart + selected.length;
 
   return {
@@ -48,35 +93,72 @@ function applySheetInlineFormat(
 }
 
 function renderSheetInlineFormatting(value: string): React.ReactNode[] {
-  const tokenRegex = /(\*\*[^*]+\*\*|\/\/[^/]+\/\/|__[^_]+__)/g;
-  const output: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let tokenIndex = 0;
+  type FormatState = { bold: boolean; italic: boolean; underline: boolean };
+  type Segment = { text: string; state: FormatState };
 
-  for (const match of value.matchAll(tokenRegex)) {
-    const matched = match[0];
-    const index = match.index ?? 0;
+  const segments: Segment[] = [];
+  let state: FormatState = { bold: false, italic: false, underline: false };
+  let buffer = "";
 
-    if (index > lastIndex) {
-      output.push(value.slice(lastIndex, index));
+  const flush = () => {
+    if (!buffer) {
+      return;
     }
 
-    if (matched.startsWith("**") && matched.endsWith("**")) {
-      output.push(<strong key={`b-${tokenIndex++}`}>{matched.slice(2, -2)}</strong>);
-    } else if (matched.startsWith("//") && matched.endsWith("//")) {
-      output.push(<em key={`i-${tokenIndex++}`}>{matched.slice(2, -2)}</em>);
-    } else if (matched.startsWith("__") && matched.endsWith("__")) {
-      output.push(<u key={`u-${tokenIndex++}`}>{matched.slice(2, -2)}</u>);
+    segments.push({
+      text: buffer,
+      state: { ...state },
+    });
+    buffer = "";
+  };
+
+  for (let index = 0; index < value.length; ) {
+    if (value.startsWith("**", index)) {
+      flush();
+      state = { ...state, bold: !state.bold };
+      index += 2;
+      continue;
     }
 
-    lastIndex = index + matched.length;
+    if (value.startsWith("//", index)) {
+      flush();
+      state = { ...state, italic: !state.italic };
+      index += 2;
+      continue;
+    }
+
+    if (value.startsWith("__", index)) {
+      flush();
+      state = { ...state, underline: !state.underline };
+      index += 2;
+      continue;
+    }
+
+    buffer += value[index];
+    index += 1;
   }
 
-  if (lastIndex < value.length) {
-    output.push(value.slice(lastIndex));
+  flush();
+
+  if (segments.length === 0) {
+    return [value];
   }
 
-  return output.length > 0 ? output : [value];
+  return segments.map((segment, segmentIndex) => {
+    let node: React.ReactNode = segment.text;
+
+    if (segment.state.bold) {
+      node = <strong key={`b-${segmentIndex}`}>{node}</strong>;
+    }
+    if (segment.state.italic) {
+      node = <em key={`i-${segmentIndex}`}>{node}</em>;
+    }
+    if (segment.state.underline) {
+      node = <u key={`u-${segmentIndex}`}>{node}</u>;
+    }
+
+    return <span key={`seg-${segmentIndex}`}>{node}</span>;
+  });
 }
 
 function SheetDataViewer({ cell, evaluatedCell }: DataViewerProps<SpreadsheetCell>) {
@@ -111,7 +193,7 @@ function SheetDataEditor({ cell, onChange, exitEditMode }: DataEditorProps<Sprea
             const target = e.currentTarget;
             const selectionStart = target.selectionStart ?? 0;
             const selectionEnd = target.selectionEnd ?? selectionStart;
-            const formatted = applySheetInlineFormat(value, selectionStart, selectionEnd, marker);
+            const formatted = toggleSheetInlineFormat(value, selectionStart, selectionEnd, marker);
 
             handleEditorChange(formatted.nextValue);
 
@@ -507,7 +589,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     const source = spreadsheetDraftRef.current.length > 0 ? spreadsheetDraftRef.current : spreadsheetData;
     const base = normalizeSpreadsheetData(source.map((r) => [...r]));
     const currentValue = base[row]?.[column] ?? "";
-    const formatted = applySheetInlineFormat(currentValue, 0, currentValue.length, marker);
+    const formatted = toggleSheetInlineFormat(currentValue, 0, currentValue.length, marker);
 
     if (!base[row]) {
       base[row] = [];
