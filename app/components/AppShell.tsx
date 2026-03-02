@@ -735,7 +735,6 @@ export function AppShell() {
             note={notes.find(n => n.id === selectedNoteId)!}
             allNotes={notes}
             onUpdate={handleUpdateNote}
-            onDelete={handleDeleteNote}
             onSelectNote={handleSelectNote}
             chatOpenStates={chatOpenStates}
             setChatOpenStates={setChatOpenStates}
