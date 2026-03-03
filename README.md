@@ -119,17 +119,6 @@ npm run package
 
 Output goes to `dist/Vault-win32-x64/`.
 
-## AI Setup
-
-Vault uses [OpenRouter](https://openrouter.ai) for AI features. You bring your own key:
-
-1. Sign up at openrouter.ai and get an API key
-2. Open Vault → Settings → AI
-3. Paste your API key
-4. Choose your preferred model
-
-For voice transcription, no setup is needed — the Whisper model downloads automatically on first use and runs locally from that point on.
-
 ## Contributing
 
 PRs and issues are welcome. This is a personal project so I may be opinionated about direction, but if you've found a bug or have a genuinely useful idea, open an issue and let's talk.
