@@ -626,6 +626,26 @@ a {
   text-decoration: underline;
 }
 
+.sheet-note-grid .Spreadsheet .Spreadsheet__active-cell,
+.sheet-note-grid .Spreadsheet .Spreadsheet__active-cell--edit {
+  border: 2px solid #3b82f6 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.sheet-note-grid .Spreadsheet .Spreadsheet__active-cell:focus,
+.sheet-note-grid .Spreadsheet .Spreadsheet__active-cell:focus-visible,
+.sheet-note-grid .Spreadsheet .Spreadsheet__cell:focus,
+.sheet-note-grid .Spreadsheet .Spreadsheet__cell:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.sheet-note-grid .Spreadsheet .Spreadsheet__floating-rect--selected,
+.sheet-note-grid .Spreadsheet .Spreadsheet__floating-rect--copied {
+  border-color: #3b82f6 !important;
+}
+
 :root[data-theme="light"] .sheet-note-grid,
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet,
 :root[data-theme="light"] .sheet-note-grid .Spreadsheet table,
