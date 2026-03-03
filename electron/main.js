@@ -839,7 +839,7 @@ function buildQuickNoteWindow() {
     backgroundColor: "#191919",
     title: "Quick Note",
     autoHideMenuBar: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     frame: false,
     show: false,
     webPreferences: {
@@ -872,7 +872,7 @@ function buildQuickAiWindow() {
     backgroundColor: "#191919",
     title: "Quick AI Chat",
     autoHideMenuBar: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     frame: false,
     show: false,
     webPreferences: {
