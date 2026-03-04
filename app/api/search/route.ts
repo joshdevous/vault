@@ -3,12 +3,15 @@ import { prisma } from "@/lib/prisma";
 
 export interface SearchResult {
   type: "note" | "vault" | "memory";
+  noteKind?: "note" | "sheet";
   id: string;
   title: string;
   snippet: string;
   parentTitle?: string; // For memories, the occasion title
   createdAt: string;
 }
+
+const SPREADSHEET_CONTENT_PREFIX = "vault:sheet:v1:";
 
 // Strip HTML tags for text matching
 function stripHtml(html: string): string {
@@ -33,6 +36,32 @@ function createSnippet(text: string, query: string, maxLength: number = 150): st
   if (end < text.length) snippet = snippet + "...";
   
   return snippet;
+}
+
+function isSheetNote(note: { icon: string; content: string }): boolean {
+  return note.icon === "sheet" || note.icon === "📊" || note.content.startsWith(SPREADSHEET_CONTENT_PREFIX);
+}
+
+function sheetContentToText(content: string): string {
+  if (!content.startsWith(SPREADSHEET_CONTENT_PREFIX)) {
+    return "";
+  }
+
+  try {
+    const payload = content.slice(SPREADSHEET_CONTENT_PREFIX.length);
+    const parsed = JSON.parse(payload);
+    if (!Array.isArray(parsed)) {
+      return "";
+    }
+
+    return parsed
+      .flatMap((row) => (Array.isArray(row) ? row : []))
+      .map((cell) => (typeof cell === "string" ? cell.trim() : ""))
+      .filter((cell) => cell.length > 0)
+      .join(" ");
+  } catch {
+    return "";
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -63,16 +92,20 @@ export async function GET(request: NextRequest) {
       });
 
       for (const note of notes) {
-        const plainContent = stripHtml(note.content);
+        const sheet = isSheetNote(note);
+        const plainContent = sheet ? sheetContentToText(note.content) : stripHtml(note.content);
         const matchInTitle = note.title.toLowerCase().includes(query.toLowerCase());
+        const fallbackSnippet = sheet ? "Sheet content" : "";
+        const snippetSource = plainContent || fallbackSnippet;
         
         results.push({
           type: "note",
+          noteKind: sheet ? "sheet" : "note",
           id: note.id,
-          title: note.title || "New page",
+          title: note.title || (sheet ? "New sheet" : "New page"),
           snippet: matchInTitle 
-            ? plainContent.slice(0, 150) + (plainContent.length > 150 ? "..." : "")
-            : createSnippet(plainContent, query),
+            ? snippetSource.slice(0, 150) + (snippetSource.length > 150 ? "..." : "")
+            : createSnippet(snippetSource, query),
           createdAt: note.createdAt.toISOString(),
         });
       }

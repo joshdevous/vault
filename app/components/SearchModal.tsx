@@ -109,32 +109,13 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
     }
   };
 
-  // Get icon for result type
-  const getTypeIcon = (type: SearchResult["type"]) => {
-    switch (type) {
-      case "note":
-        return (
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-          </svg>
-        );
-      case "vault":
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        );
-      case "memory":
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        );
-    }
-  };
-
   // Get label for result type
-  const getTypeLabel = (type: SearchResult["type"]) => {
+  const getTypeLabel = (result: SearchResult) => {
+    if (result.type === "note" && result.noteKind === "sheet") {
+      return "Sheet";
+    }
+
+    const type = result.type;
     switch (type) {
       case "note": return "Note";
       case "vault": return "Vault";
@@ -143,6 +124,8 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
   };
 
   if (!isOpen) return null;
+
+  const hasResults = results.length > 0;
 
   return (
     <div 
@@ -158,7 +141,7 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#3f3f3f]">
+        <div className={`flex items-center gap-3 px-4 py-3 ${hasResults ? "border-b border-[#3f3f3f]" : ""}`}>
           <svg className="w-5 h-5 text-[#6b6b6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -168,7 +151,7 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search notes, vault, memories..."
+            placeholder="Search across the app..."
             className="flex-1 bg-transparent text-[#e3e3e3] placeholder-[#6b6b6b] outline-none text-base"
           />
           {isLoading && (
@@ -176,67 +159,55 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
           )}
         </div>
 
-        {/* Results */}
-        <div 
-          ref={resultsRef}
-          className="max-h-[60vh] overflow-auto"
-        >
-          {query.length >= 2 && results.length === 0 && !isLoading && (
-            <div className="px-4 py-8 text-center text-[#6b6b6b]">
-              No results found for &ldquo;{query}&rdquo;
-            </div>
-          )}
-
-          {results.map((result, index) => (
+        {hasResults && (
+          <>
             <div
-              key={`${result.type}-${result.id}`}
-              className={`px-4 py-3 cursor-pointer border-b border-[#2f2f2f] last:border-b-0 ${
-                index === selectedIndex ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"
-              }`}
-              onClick={() => selectResult(result)}
-              onMouseEnter={() => setSelectedIndex(index)}
+              ref={resultsRef}
+              className="max-h-[60vh] overflow-auto"
             >
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-[#e3e3e3] truncate">
-                      {result.title}
-                    </span>
-                    <span className="text-xs text-[#6b6b6b] bg-[#2f2f2f] px-1.5 py-0.5 rounded">
-                      {getTypeLabel(result.type)}
-                    </span>
+              {results.map((result, index) => (
+                <div
+                  key={`${result.type}-${result.id}`}
+                  className={`px-4 py-3 cursor-pointer border-b border-[#2f2f2f] last:border-b-0 ${
+                    index === selectedIndex ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"
+                  }`}
+                  onClick={() => selectResult(result)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[#e3e3e3] truncate">
+                          {result.title}
+                        </span>
+                        <span className="text-xs text-[#6b6b6b] bg-[#2f2f2f] px-1.5 py-0.5 rounded">
+                          {getTypeLabel(result)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#9b9b9b] mt-1 line-clamp-1">
+                        {result.snippet}
+                      </p>
+                      {result.parentTitle && result.type === "memory" && (
+                        <p className="text-xs text-[#6b6b6b] mt-1">
+                          in {result.parentTitle}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-[#9b9b9b] mt-1 line-clamp-1">
-                    {result.snippet}
-                  </p>
-                  {result.parentTitle && result.type === "memory" && (
-                    <p className="text-xs text-[#6b6b6b] mt-1">
-                      in {result.parentTitle}
-                    </p>
-                  )}
                 </div>
+              ))}
+            </div>
+
+            <div className="px-4 py-2 border-t border-[#3f3f3f] bg-[#1f1f1f] text-xs text-[#6b6b6b] flex items-center justify-between leading-none">
+              <div className="flex items-center gap-4">
+                <span className="inline-flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded">↑↓</kbd>navigate</span>
+                <span className="inline-flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded">Enter</kbd>open</span>
+                <span className="inline-flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded">Esc</kbd>close</span>
               </div>
+              <span className="inline-flex items-center">{results.length} result{results.length !== 1 ? "s" : ""}</span>
             </div>
-          ))}
-
-          {query.length < 2 && (
-            <div className="px-4 py-8 text-center text-[#6b6b6b]">
-              Type at least 2 characters to search
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-4 py-2 border-t border-[#3f3f3f] bg-[#1f1f1f] text-xs text-[#6b6b6b] flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span><kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded">↑↓</kbd> navigate</span>
-            <span><kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded">Enter</kbd> open</span>
-            <span><kbd className="px-1.5 py-0.5 bg-[#2f2f2f] rounded">Esc</kbd> close</span>
-          </div>
-          {results.length > 0 && (
-            <span>{results.length} result{results.length !== 1 ? "s" : ""}</span>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
