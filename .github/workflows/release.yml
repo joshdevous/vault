@@ -17,6 +17,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $packageVersion = node -p "require('./package.json').version"
+          $expectedTag = "v$packageVersion"
+          $actualTag = "${{ github.ref_name }}"
+          if ($actualTag -ne $expectedTag) {
+            Write-Error "Tag '$actualTag' does not match package.json version '$packageVersion' (expected '$expectedTag')."
+            exit 1
+          }
+          Write-Host "Release tag matches package version: $actualTag"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

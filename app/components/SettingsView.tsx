@@ -89,7 +89,34 @@ export function SettingsView() {
   const [azureSpeechKey, setAzureSpeechKey] = useState("");
   const [azureSpeechRegion, setAzureSpeechRegion] = useState("");
   const [azureSpeechLanguage, setAzureSpeechLanguage] = useState("en-US");
+  const [appVersion, setAppVersion] = useState("-");
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVersion = async () => {
+      try {
+        const response = await fetch("/api/version", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { version?: string };
+        if (!cancelled && data.version) {
+          setAppVersion(`v${data.version}`);
+        }
+      } catch {
+        // Ignore version read failures
+      }
+    };
+
+    void loadVersion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const savedSidebar = localStorage.getItem(SIDEBAR_VISIBILITY_STORAGE_KEY);
@@ -522,6 +549,17 @@ export function SettingsView() {
                     className="w-full rounded border border-[#2f2f2f] bg-[#191919] px-3 py-2 text-sm text-[#d1d1d1] focus:outline-none focus:ring-1 focus:ring-[#7eb8f7]"
                   />
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg text-[#e3e3e3] font-medium">About</h2>
+            <p className="text-sm text-[#9b9b9b]">App metadata and release version.</p>
+            <div className="rounded border border-[#2f2f2f] bg-[#1e1e1e] p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-[#d1d1d1]">Version</span>
+                <span className="text-sm text-[#9b9b9b]">{appVersion}</span>
               </div>
             </div>
           </section>
