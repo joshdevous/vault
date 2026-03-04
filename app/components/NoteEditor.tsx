@@ -1960,48 +1960,48 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
             ) : showCallNoteView ? (
               <div className="flex-1 pb-10">
                 <div className="space-y-4">
-                  <section className="rounded-lg border border-[#2f2f2f] bg-[#191919] px-4 py-3">
-                    <h3 className="text-xs uppercase tracking-wider text-[#91918e] font-semibold mb-2">🧠 Summary</h3>
+                  <section className={`rounded-lg border px-4 py-3 ${isLightTheme ? "border-[#d6d6d6] bg-[#f7f7f7]" : "border-[#2f2f2f] bg-[#191919]"}`}>
+                    <h3 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${isLightTheme ? "text-[#4b4b4b]" : "text-[#91918e]"}`}>🧠 Summary</h3>
                     {parsedCallSections.summaryItems.length > 0 ? (
                       <ul className="space-y-1.5">
                         {parsedCallSections.summaryItems.map((item, index) => (
-                          <li key={`summary-${index}`} className="text-sm text-[#d7d7d7] leading-relaxed">
+                          <li key={`summary-${index}`} className={`text-sm leading-relaxed ${isLightTheme ? "text-[#141414]" : "text-[#d7d7d7]"}`}>
                             • {item}
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-[#7a7a7a]">No summary yet.</p>
+                      <p className={`text-sm ${isLightTheme ? "text-[#5f5f5f]" : "text-[#7a7a7a]"}`}>No summary yet.</p>
                     )}
                   </section>
 
-                  <section className="rounded-lg border border-[#2f2f2f] bg-[#191919] px-4 py-3">
-                    <h3 className="text-xs uppercase tracking-wider text-[#91918e] font-semibold mb-2">✅ Action Items</h3>
+                  <section className={`rounded-lg border px-4 py-3 ${isLightTheme ? "border-[#d6d6d6] bg-[#f7f7f7]" : "border-[#2f2f2f] bg-[#191919]"}`}>
+                    <h3 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${isLightTheme ? "text-[#4b4b4b]" : "text-[#91918e]"}`}>✅ Action Items</h3>
                     {parsedCallSections.actionItems.length > 0 ? (
                       <ul className="space-y-1.5">
                         {parsedCallSections.actionItems.map((item, index) => (
-                          <li key={`action-${index}`} className="text-sm text-[#d7d7d7] leading-relaxed">
+                          <li key={`action-${index}`} className={`text-sm leading-relaxed ${isLightTheme ? "text-[#141414]" : "text-[#d7d7d7]"}`}>
                             • {item}
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-[#7a7a7a]">No action items identified.</p>
+                      <p className={`text-sm ${isLightTheme ? "text-[#5f5f5f]" : "text-[#7a7a7a]"}`}>No action items identified.</p>
                     )}
                   </section>
 
-                  <section className="rounded-lg border border-[#2f2f2f] bg-[#191919] px-4 py-3">
-                    <h3 className="text-xs uppercase tracking-wider text-[#91918e] font-semibold mb-2">🗣️ {parsedCallSections.transcriptLabel}</h3>
+                  <section className={`rounded-lg border px-4 py-3 ${isLightTheme ? "border-[#d6d6d6] bg-[#f7f7f7]" : "border-[#2f2f2f] bg-[#191919]"}`}>
+                    <h3 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${isLightTheme ? "text-[#4b4b4b]" : "text-[#91918e]"}`}>🗣️ {parsedCallSections.transcriptLabel}</h3>
                     {parsedCallSections.transcriptLines.length > 0 ? (
                       <div className="space-y-2 max-h-[52vh] overflow-auto pr-1">
                         {parsedCallSections.transcriptLines.map((line, index) => (
-                          <p key={`line-${index}`} className="text-sm text-[#c5c5c5] leading-relaxed">
+                          <p key={`line-${index}`} className={`text-sm leading-relaxed ${isLightTheme ? "text-[#141414]" : "text-[#c5c5c5]"}`}>
                             {line}
                           </p>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-[#7a7a7a]">Transcript will appear here as the call is transcribed.</p>
+                      <p className={`text-sm ${isLightTheme ? "text-[#5f5f5f]" : "text-[#7a7a7a]"}`}>Transcript will appear here as the call is transcribed.</p>
                     )}
                   </section>
                 </div>

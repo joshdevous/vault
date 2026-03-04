@@ -271,6 +271,14 @@ a {
   color: #2a2a25 !important;
 }
 
+:root[data-theme="light"] .ai-assistant-content :where(strong) {
+  color: #1f1f1b !important;
+}
+
+:root[data-theme="light"] .ai-assistant-content strong {
+  color: #1f1f1b !important;
+}
+
 :root[data-theme="light"] .ai-assistant-content :where(code) {
   background: #f1f1ec !important;
   color: #2f2f29 !important;
