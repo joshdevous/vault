@@ -31,7 +31,7 @@ export async function POST(
 
     // Build conversation summary for title
     const conversationSnippet = session.messages
-      .map(m => `${m.role}: ${m.content.slice(0, 200)}`)
+      .map((m: { role: string; content: string }) => `${m.role}: ${m.content.slice(0, 200)}`)
       .join("\n");
 
     const titlePrompt = `Generate a very short title (3-5 words max) for this conversation. Just the title, no quotes or punctuation.
