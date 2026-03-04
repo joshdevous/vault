@@ -289,6 +289,30 @@ a {
   border: 1px solid #e3e3dc;
 }
 
+/* Keep top-level ordered list numbering continuous in AI chat even when markdown splits into multiple <ol> blocks */
+.ai-assistant-content {
+  counter-reset: ai-chat-ol;
+}
+
+.ai-assistant-content > ol {
+  list-style: none !important;
+  padding-left: 1.75rem !important;
+}
+
+.ai-assistant-content > ol > li {
+  counter-increment: ai-chat-ol;
+  position: relative;
+}
+
+.ai-assistant-content > ol > li::before {
+  content: counter(ai-chat-ol) ".";
+  position: absolute;
+  left: -1.75rem;
+  width: 1.5rem;
+  text-align: right;
+  color: currentColor;
+}
+
 :root[data-theme="light"] .ai-chat-composer {
   background-color: #f7f7f3 !important;
   border-color: #e4e4dd !important;
