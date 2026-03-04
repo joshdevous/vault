@@ -594,6 +594,7 @@ export function AppShell() {
   const handleArchiveNote = async (id: string) => {
     const note = notes.find((n) => n.id === id);
     const descendantIds = getDescendantNoteIds(notes, id);
+    const descendantIdSet = new Set(descendantIds);
     const hasChildren = descendantIds.length > 1;
     const isEmpty = note && 
       (note.title === "" || note.title === "Untitled") && 
@@ -617,18 +618,55 @@ export function AppShell() {
     }
 
     try {
+      const archivedRootOrders = notes
+        .filter((n) => n.archived && n.parentId === null && !descendantIdSet.has(n.id))
+        .map((n) => n.order);
+      let nextArchiveRootOrder = archivedRootOrders.length > 0 ? Math.max(...archivedRootOrders) + 1 : 0;
+
+      const archivePatchById = new Map<
+        string,
+        { archived: true; parentId?: null; order?: number }
+      >();
+
+      for (const noteId of descendantIds) {
+        const current = notes.find((entry) => entry.id === noteId);
+        const willBeOrphaned = Boolean(current?.parentId && !descendantIdSet.has(current.parentId));
+
+        if (willBeOrphaned) {
+          archivePatchById.set(noteId, {
+            archived: true,
+            parentId: null,
+            order: nextArchiveRootOrder++,
+          });
+        } else {
+          archivePatchById.set(noteId, { archived: true });
+        }
+      }
+
       await Promise.all(
         descendantIds.map((noteId) =>
           fetch(`/api/notes/${noteId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ archived: true }),
+            body: JSON.stringify(archivePatchById.get(noteId) ?? { archived: true }),
           })
         )
       );
 
       setNotes((prev) =>
-        prev.map((n) => (descendantIds.includes(n.id) ? { ...n, archived: true } : n))
+        prev.map((n) => {
+          const patch = archivePatchById.get(n.id);
+          if (!patch) {
+            return n;
+          }
+
+          return {
+            ...n,
+            archived: true,
+            ...(patch.parentId !== undefined ? { parentId: patch.parentId } : {}),
+            ...(patch.order !== undefined ? { order: patch.order } : {}),
+          };
+        })
       );
 
       if (selectedNoteId && descendantIds.includes(selectedNoteId)) {
