@@ -127,6 +127,54 @@ const PORT = isDev ? 3000 : 51333;
 const QUICK_NOTE_ENABLED_STORAGE_KEY = "vault-setting-quick-note-enabled";
 const QUICK_AI_ENABLED_STORAGE_KEY = "vault-setting-quick-ai-enabled";
 
+const MIN_ZOOM_FACTOR = 0.5;
+const MAX_ZOOM_FACTOR = 3;
+const ZOOM_STEP = 0.1;
+
+function clampZoomFactor(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 1;
+  }
+
+  const rounded = Math.round(numeric * 10) / 10;
+  return Math.min(MAX_ZOOM_FACTOR, Math.max(MIN_ZOOM_FACTOR, rounded));
+}
+
+function installStandardZoomShortcuts(window) {
+  if (!window || window.isDestroyed()) {
+    return;
+  }
+
+  window.webContents.on("before-input-event", (event, input) => {
+    const hasPrimaryModifier = Boolean(input.control || input.meta);
+    if (!hasPrimaryModifier || input.alt) {
+      return;
+    }
+
+    const key = String(input.key || "");
+    const code = String(input.code || "");
+    const currentZoom = window.webContents.getZoomFactor();
+
+    if (key === "-" || key === "_" || code === "NumpadSubtract") {
+      event.preventDefault();
+      window.webContents.setZoomFactor(clampZoomFactor(currentZoom - ZOOM_STEP));
+      return;
+    }
+
+    if (key === "=" || key === "+" || code === "NumpadAdd") {
+      event.preventDefault();
+      window.webContents.setZoomFactor(clampZoomFactor(currentZoom + ZOOM_STEP));
+      return;
+    }
+
+    if (key === "0" || key === ")" || code === "Numpad0") {
+      event.preventDefault();
+      window.webContents.setZoomFactor(1);
+    }
+  });
+}
+
 function runCommand(command, args) {
   return new Promise((resolve) => {
     execFile(command, args, { windowsHide: true }, (error, stdout, stderr) => {
@@ -951,6 +999,8 @@ async function createCallsTranscriberWindow() {
     },
   });
 
+  installStandardZoomShortcuts(window);
+
   window.webContents.session.setDisplayMediaRequestHandler(
     async (_request, callback) => {
       try {
@@ -1398,6 +1448,8 @@ function buildQuickNoteWindow() {
     },
   });
 
+  installStandardZoomShortcuts(window);
+
   quickNoteWindows.add(window);
   window.setBackgroundColor("#191919");
 
@@ -1444,6 +1496,8 @@ function buildQuickAiWindow() {
       spellcheck: false,
     },
   });
+
+  installStandardZoomShortcuts(window);
 
   quickAiWindows.add(window);
   window.setBackgroundColor("#191919");
@@ -2035,6 +2089,8 @@ function createWindow() {
       contextIsolation: true,
     },
   });
+
+  installStandardZoomShortcuts(mainWindow);
 
   // Show window when ready to avoid flash
   mainWindow.once("ready-to-show", () => {
