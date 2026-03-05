@@ -245,6 +245,7 @@ function NoteItem({
   const [isArchiveHovered, setIsArchiveHovered] = useState(false);
 
   const usePermanentDeleteAction = isArchiveHovered && isCtrlPressed;
+  const isProtectedRootCategory = note.parentId === null && (note.title === "Quick Notes" || note.title === "Calls");
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -339,34 +340,35 @@ function NoteItem({
 
         {/* Action buttons */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
-          {/* Archive button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (usePermanentDeleteAction) {
-                onDeletePermanently(note.id);
-                return;
-              }
+          {!isProtectedRootCategory && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (usePermanentDeleteAction) {
+                  onDeletePermanently(note.id);
+                  return;
+                }
 
-              onArchiveNote(note.id);
-            }}
-            onMouseEnter={() => setIsArchiveHovered(true)}
-            onMouseLeave={() => setIsArchiveHovered(false)}
-            className={`p-0.5 hover:bg-[rgba(255,255,255,0.1)] rounded transition-all cursor-pointer ${
-              usePermanentDeleteAction ? "text-red-400 hover:text-red-300" : "text-[#6b6b6b] hover:text-[#aeaeae]"
-            }`}
-            title={usePermanentDeleteAction ? "Delete permanently" : "Archive note"}
-          >
-            {usePermanentDeleteAction ? (
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            ) : (
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-            )}
-          </button>
+                onArchiveNote(note.id);
+              }}
+              onMouseEnter={() => setIsArchiveHovered(true)}
+              onMouseLeave={() => setIsArchiveHovered(false)}
+              className={`p-0.5 hover:bg-[rgba(255,255,255,0.1)] rounded transition-all cursor-pointer ${
+                usePermanentDeleteAction ? "text-red-400 hover:text-red-300" : "text-[#6b6b6b] hover:text-[#aeaeae]"
+              }`}
+              title={usePermanentDeleteAction ? "Delete permanently" : "Archive note"}
+            >
+              {usePermanentDeleteAction ? (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              ) : (
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+              )}
+            </button>
+          )}
           {/* Add sub-note button */}
           <button
             onClick={(e) => {
@@ -442,6 +444,8 @@ type SidebarVisibilityState = Record<SidebarVisibilityKey, boolean>;
 
 const TEAMS_CALL_TRANSCRIPTION_ENABLED_STORAGE_KEY = "vault-setting-teams-call-transcription-enabled";
 const TEAMS_CALL_TRANSCRIPTION_EVENT = "vault-teams-call-transcription-updated";
+const QUICK_NOTE_ENABLED_STORAGE_KEY = "vault-setting-quick-note-enabled";
+const QUICK_ACCESS_UPDATED_EVENT = "vault-quick-access-updated";
 
 const defaultSidebarVisibility: SidebarVisibilityState = {
   notes: true,
@@ -471,6 +475,7 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
   const [iconPickerPosition, setIconPickerPosition] = useState<{ x: number; y: number } | null>(null);
   const [hiddenNoteNames, setHiddenNoteNames] = useState<Set<string>>(new Set());
   const [teamsCallTranscriptionEnabled, setTeamsCallTranscriptionEnabled] = useState(false);
+  const [quickNoteEnabled, setQuickNoteEnabled] = useState(true);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   
   // Drag and drop state
@@ -509,6 +514,9 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
     const savedTeamsCallTranscriptionEnabled = localStorage.getItem(TEAMS_CALL_TRANSCRIPTION_ENABLED_STORAGE_KEY);
     setTeamsCallTranscriptionEnabled(savedTeamsCallTranscriptionEnabled === "true");
 
+    const savedQuickNoteEnabled = localStorage.getItem(QUICK_NOTE_ENABLED_STORAGE_KEY);
+    setQuickNoteEnabled(savedQuickNoteEnabled !== "false");
+
     setHydrated(true);
   }, []);
 
@@ -524,6 +532,21 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
     window.addEventListener(TEAMS_CALL_TRANSCRIPTION_EVENT, handleTeamsCallTranscriptionUpdated as EventListener);
     return () => {
       window.removeEventListener(TEAMS_CALL_TRANSCRIPTION_EVENT, handleTeamsCallTranscriptionUpdated as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleQuickAccessUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ quickNoteEnabled?: boolean }>;
+      const enabled = customEvent.detail?.quickNoteEnabled;
+      if (typeof enabled === "boolean") {
+        setQuickNoteEnabled(enabled);
+      }
+    };
+
+    window.addEventListener(QUICK_ACCESS_UPDATED_EVENT, handleQuickAccessUpdated as EventListener);
+    return () => {
+      window.removeEventListener(QUICK_ACCESS_UPDATED_EVENT, handleQuickAccessUpdated as EventListener);
     };
   }, []);
 
@@ -643,18 +666,31 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
   // Filter out archived notes before building tree
   const activeNotes = useMemo(() => {
     const visibleNotes = notes.filter((entry) => !entry.archived);
-    if (teamsCallTranscriptionEnabled) {
+
+    const hiddenRootTitles = new Set<string>();
+    if (!teamsCallTranscriptionEnabled) {
+      hiddenRootTitles.add("Calls");
+    }
+    if (!quickNoteEnabled) {
+      hiddenRootTitles.add("Quick Notes");
+    }
+
+    if (hiddenRootTitles.size === 0) {
       return visibleNotes;
     }
 
-    const callsRoot = visibleNotes.find((entry) => entry.parentId === null && entry.title === "Calls");
-    if (!callsRoot) {
+    const hiddenIds = new Set<string>();
+    for (const entry of visibleNotes) {
+      if (entry.parentId === null && hiddenRootTitles.has(entry.title)) {
+        hiddenIds.add(entry.id);
+      }
+    }
+
+    if (hiddenIds.size === 0) {
       return visibleNotes;
     }
 
-    const hiddenIds = new Set<string>([callsRoot.id]);
     let added = true;
-
     while (added) {
       added = false;
       for (const entry of visibleNotes) {
@@ -666,7 +702,7 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
     }
 
     return visibleNotes.filter((entry) => !hiddenIds.has(entry.id));
-  }, [notes, teamsCallTranscriptionEnabled]);
+  }, [notes, quickNoteEnabled, teamsCallTranscriptionEnabled]);
   const noteTree = useMemo(() => buildNoteTree(activeNotes), [activeNotes]);
 
   const toggleSection = (section: SectionKey) => {

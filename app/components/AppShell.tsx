@@ -621,7 +621,7 @@ export function AppShell() {
       const archivedRootOrders = notes
         .filter((n) => n.archived && n.parentId === null && !descendantIdSet.has(n.id))
         .map((n) => n.order);
-      let nextArchiveRootOrder = archivedRootOrders.length > 0 ? Math.max(...archivedRootOrders) + 1 : 0;
+      let nextArchiveRootOrder = archivedRootOrders.length > 0 ? Math.min(...archivedRootOrders) - 1 : 0;
 
       const archivePatchById = new Map<
         string,
@@ -683,18 +683,50 @@ export function AppShell() {
     const descendantIds = getDescendantNoteIds(notes, id);
 
     try {
+      const activeRootOrders = notes
+        .filter((entry) => !entry.archived && entry.parentId === null && !descendantIds.includes(entry.id))
+        .map((entry) => entry.order);
+      const rootRestoreIds = descendantIds.filter((noteId) => {
+        const current = notes.find((entry) => entry.id === noteId);
+        return Boolean(current && current.parentId === null);
+      });
+
+      let nextRestoreRootOrder =
+        activeRootOrders.length > 0 ? Math.min(...activeRootOrders) - rootRestoreIds.length : 0;
+
+      const restorePatchById = new Map<string, { archived: false; order?: number }>();
+      for (const noteId of descendantIds) {
+        const current = notes.find((entry) => entry.id === noteId);
+        if (current?.parentId === null) {
+          restorePatchById.set(noteId, { archived: false, order: nextRestoreRootOrder++ });
+        } else {
+          restorePatchById.set(noteId, { archived: false });
+        }
+      }
+
       await Promise.all(
         descendantIds.map((noteId) =>
           fetch(`/api/notes/${noteId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ archived: false }),
+            body: JSON.stringify(restorePatchById.get(noteId) ?? { archived: false }),
           })
         )
       );
 
       setNotes((prev) =>
-        prev.map((n) => (descendantIds.includes(n.id) ? { ...n, archived: false } : n))
+        prev.map((n) => {
+          const patch = restorePatchById.get(n.id);
+          if (!patch) {
+            return n;
+          }
+
+          return {
+            ...n,
+            archived: false,
+            ...(patch.order !== undefined ? { order: patch.order } : {}),
+          };
+        })
       );
 
       if (selectedArchivedNoteId && descendantIds.includes(selectedArchivedNoteId)) {

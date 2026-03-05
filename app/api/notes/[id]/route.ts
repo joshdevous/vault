@@ -34,11 +34,22 @@ export async function PATCH(
     const body = await request.json();
     const existingNote = await prisma.note.findUnique({
       where: { id },
-      select: { content: true },
+      select: { content: true, title: true, parentId: true },
     });
 
     if (!existingNote) {
       return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    }
+
+    const isProtectedCategory =
+      existingNote.parentId === null &&
+      (existingNote.title === "Quick Notes" || existingNote.title === "Calls");
+
+    if (body.archived === true && isProtectedCategory) {
+      return NextResponse.json(
+        { error: "This category cannot be archived" },
+        { status: 400 }
+      );
     }
     
     const note = await prisma.note.update({
