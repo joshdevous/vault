@@ -4,6 +4,7 @@ A note-taking desktop app with rich text, spreadsheet notes, and hierarchical or
 
 <img width="2013" height="1202" alt="image" src="https://github.com/user-attachments/assets/f182c04d-ef9b-4604-856c-eacdd91ee897" />
 
+
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey)
 
