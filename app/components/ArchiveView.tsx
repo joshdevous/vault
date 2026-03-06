@@ -17,6 +17,38 @@ interface NoteWithChildren extends Note {
 
 const SPREADSHEET_CONTENT_PREFIX = "vault:sheet:v1:";
 
+function spreadsheetColumnIndexToLabel(column: number): string {
+  let label = "";
+  let index = column;
+  while (index >= 0) {
+    label = String.fromCharCode(65 + (index % 26)) + label;
+    index = Math.floor(index / 26) - 1;
+  }
+  return label;
+}
+
+function parseSpreadsheetContent(content: string): string[][] | null {
+  if (!content.startsWith(SPREADSHEET_CONTENT_PREFIX)) {
+    return null;
+  }
+
+  try {
+    const payload = content.slice(SPREADSHEET_CONTENT_PREFIX.length);
+    const parsed = JSON.parse(payload);
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    return parsed.map((row) =>
+      Array.isArray(row)
+        ? row.map((cell) => (typeof cell === "string" ? cell : String(cell ?? "")))
+        : []
+    );
+  } catch {
+    return null;
+  }
+}
+
 function isSpreadsheetNoteLike(noteLike: Pick<Note, "icon" | "content">): boolean {
   return noteLike.icon === "sheet" || noteLike.icon === "📊" || noteLike.content.startsWith(SPREADSHEET_CONTENT_PREFIX);
 }
@@ -62,12 +94,21 @@ function buildNoteTree(notes: Note[]): NoteWithChildren[] {
     }
   });
 
-  const sortByOrder = (nodes: NoteWithChildren[]) => {
-    nodes.sort((a, b) => a.order - b.order);
-    nodes.forEach((node) => sortByOrder(node.children));
+  const sortByMostRecent = (nodes: NoteWithChildren[]) => {
+    nodes.sort((a, b) => {
+      const aTime = Date.parse(a.updatedAt || "");
+      const bTime = Date.parse(b.updatedAt || "");
+
+      if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) {
+        return bTime - aTime;
+      }
+
+      return b.order - a.order;
+    });
+    nodes.forEach((node) => sortByMostRecent(node.children));
   };
 
-  sortByOrder(roots);
+  sortByMostRecent(roots);
   return roots;
 }
 
@@ -249,6 +290,10 @@ export function ArchiveView({ notes, selectedNoteId, onSelectNote, onRestoreNote
   const archivedNoteTree = useMemo(() => buildNoteTree(archivedNotes), [archivedNotes]);
   const selectedNote = selectedNoteId ? notes.find((n) => n.id === selectedNoteId) : null;
   const [collapsedNoteIds, setCollapsedNoteIds] = useState<Set<string>>(new Set());
+  const selectedSheetData = useMemo(
+    () => (selectedNote ? parseSpreadsheetContent(selectedNote.content) : null),
+    [selectedNote]
+  );
 
   const selectedBreadcrumbs = useMemo(() => {
     if (!selectedNote) {
@@ -331,10 +376,45 @@ export function ArchiveView({ notes, selectedNoteId, onSelectNote, onRestoreNote
         <div className="flex-1 overflow-auto">
           <div className="max-w-3xl mx-auto px-16 py-12">
             <h1 className="text-4xl font-bold text-[#e3e3e3] mb-4">{selectedNote.title || getUntitledLabel(selectedNote)}</h1>
-            <div
-              className="prose prose-invert max-w-none text-[#e3e3e3] text-base leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: selectedNote.content || "<p class='text-[#4a4a4a]'>No content</p>" }}
-            />
+            {selectedSheetData ? (
+              <div className="overflow-auto border border-[#2f2f2f] rounded-md">
+                <table className="w-full border-collapse text-sm text-[#d1d1d1]">
+                  <thead>
+                    <tr className="bg-[#222]">
+                      <th className="w-10 border border-[#2f2f2f] px-2 py-1 text-[#9b9b9b] text-xs">#</th>
+                      {(selectedSheetData[0] ?? []).map((_, columnIndex) => (
+                        <th
+                          key={`sheet-col-${columnIndex}`}
+                          className="border border-[#2f2f2f] px-2 py-1 text-left text-[#9b9b9b] text-xs min-w-[100px]"
+                        >
+                          {spreadsheetColumnIndexToLabel(columnIndex)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedSheetData.map((row, rowIndex) => (
+                      <tr key={`sheet-row-${rowIndex}`} className="odd:bg-[#1b1b1b] even:bg-[#181818]">
+                        <td className="border border-[#2f2f2f] px-2 py-1 text-[#9b9b9b] text-xs align-top">{rowIndex + 1}</td>
+                        {row.map((cell, columnIndex) => (
+                          <td
+                            key={`sheet-cell-${rowIndex}-${columnIndex}`}
+                            className="border border-[#2f2f2f] px-2 py-1 align-top whitespace-pre-wrap break-words"
+                          >
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div
+                className="prose prose-invert max-w-none text-[#e3e3e3] text-base leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: selectedNote.content || "<p class='text-[#4a4a4a]'>No content</p>" }}
+              />
+            )}
           </div>
         </div>
       </div>
