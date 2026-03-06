@@ -477,6 +477,20 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
   const [teamsCallTranscriptionEnabled, setTeamsCallTranscriptionEnabled] = useState(false);
   const [quickNoteEnabled, setQuickNoteEnabled] = useState(true);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+
+  const getClampedIconPickerPosition = (x: number, y: number) => {
+    const viewportPadding = 12;
+    const pickerWidth = 320;
+    const pickerHeight = 440;
+
+    const maxX = Math.max(viewportPadding, window.innerWidth - pickerWidth - viewportPadding);
+    const maxY = Math.max(viewportPadding, window.innerHeight - pickerHeight - viewportPadding);
+
+    return {
+      x: Math.max(viewportPadding, Math.min(x, maxX)),
+      y: Math.max(viewportPadding, Math.min(y, maxY)),
+    };
+  };
   
   // Drag and drop state
   const [dragState, setDragState] = useState<DragState>({
@@ -1151,7 +1165,7 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
             className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
             onClick={() => {
               setIconPickerNoteId(contextMenu.noteId);
-              setIconPickerPosition({ x: contextMenu.x, y: contextMenu.y });
+              setIconPickerPosition(getClampedIconPickerPosition(contextMenu.x, contextMenu.y));
               setContextMenu(null);
             }}
           >
