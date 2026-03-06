@@ -26,6 +26,7 @@ const QUICK_AI_ENABLED_STORAGE_KEY = "vault-setting-quick-ai-enabled";
 const QUICK_ACCESS_UPDATED_EVENT = "vault-quick-access-updated";
 const ARCHIVE_AUTO_DELETE_STORAGE_KEY = "vault-setting-archive-auto-delete-days";
 const ARCHIVE_AUTO_DELETE_EVENT = "vault-archive-auto-delete-updated";
+const SPREADSHEET_CONTENT_PREFIX = "vault:sheet:v1:";
 const DEFAULT_QUICK_NOTE_SHORTCUT = "Ctrl+Q";
 const DEFAULT_QUICK_AI_SHORTCUT = "Ctrl+Space";
 const ARCHIVE_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -114,6 +115,60 @@ function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding | null):
 function isTypingTarget(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null;
   return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || Boolean(element?.isContentEditable);
+}
+
+function isSpreadsheetNoteLike(noteLike: Pick<Note, "icon" | "content">): boolean {
+  return noteLike.icon === "sheet" || noteLike.icon === "📊" || noteLike.content.startsWith(SPREADSHEET_CONTENT_PREFIX);
+}
+
+function HomeNoteIcon({ icon, hasContent, content = "" }: { icon: string; hasContent: boolean; content?: string }) {
+  if (icon.startsWith("icon:")) {
+    const filename = icon.substring(5);
+    return <img src={`/api/icons/${filename}`} alt="" className="w-4 h-4 shrink-0 rounded-sm object-cover" />;
+  }
+
+  const isSpreadsheetIcon = isSpreadsheetNoteLike({ icon, content });
+  if (isSpreadsheetIcon) {
+    if (hasContent) {
+      return (
+        <svg className="w-4 h-4 shrink-0 text-[#9b9b9b]" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="3" y="3" width="18" height="18" rx="2.5" ry="2.5" />
+        </svg>
+      );
+    }
+
+    return (
+      <svg className="w-4 h-4 shrink-0 text-[#6b6b6b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2.5" ry="2.5" />
+      </svg>
+    );
+  }
+
+  if (icon && icon !== "📄" && icon !== "sheet" && icon !== "📊") {
+    return (
+      <span
+        className="w-4 h-4 shrink-0 text-sm leading-none flex items-center justify-center text-[#ebebeb]"
+        style={{ fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}
+      >
+        {icon}
+      </span>
+    );
+  }
+
+  if (hasContent) {
+    return (
+      <svg className="w-4 h-4 shrink-0 text-[#9b9b9b]" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="w-4 h-4 shrink-0 text-[#6b6b6b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+      <polyline points="14,2 14,8 20,8" />
+    </svg>
+  );
 }
 
 function getDescendantNoteIds(notes: Note[], rootId: string): string[] {
@@ -1084,6 +1139,11 @@ export function AppShell() {
     );
   }
 
+  const activeNotes = notes.filter((note) => !note.archived);
+  const recentNotes = [...activeNotes]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 5);
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
@@ -1169,14 +1229,60 @@ export function AppShell() {
             
             {/* Welcome content */}
             <div className="flex-1 overflow-auto">
-              <div className="max-w-3xl mx-auto px-24 py-20">
-                <h1 className="text-4xl font-bold text-[#e3e3e3] mb-4">Welcome to <span className="text-[#7eb8f7]">Vault</span></h1>
-                <p className="text-[#9b9b9b] text-lg">
-                  {isLoading ? "Loading..." : notes.length === 0 
-                    ? "Create your first note using the + button in the sidebar."
-                    : "Select a note from the sidebar or create a new one."
-                  }
-                </p>
+              <div className="max-w-3xl mx-auto px-16 py-14">
+                <article className="space-y-6">
+                  <header className="space-y-3">
+                    <h1 className="text-4xl font-bold text-[#e3e3e3]">Welcome to Vault</h1>
+                    <p className="text-[#9b9b9b] text-lg leading-relaxed">
+                      {isLoading
+                        ? "Loading your workspace..."
+                        : activeNotes.length === 0
+                          ? "This page works like a starting note. Create your first page and begin building your space."
+                          : "A local-first desktop workspace for notes, quick capture, and AI-assisted thinking, with nested pages, call summaries, and smarter search."}
+                    </p>
+                  </header>
+
+                  <section className="space-y-2">
+                    <h2 className="text-sm uppercase tracking-wider text-[#7a7a7a]">Quick Actions</h2>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <button onClick={() => handleCreateNote()} className="text-[#7eb8f7] hover:underline cursor-pointer">
+                        New note
+                      </button>
+                      <button onClick={() => handleCreateNote(undefined, "spreadsheet")} className="text-[#7eb8f7] hover:underline cursor-pointer">
+                        New spreadsheet
+                      </button>
+                      <button onClick={handleOpenSearch} className="text-[#7eb8f7] hover:underline cursor-pointer">
+                        Search workspace
+                      </button>
+                      <button onClick={handleOpenAI} className="text-[#7eb8f7] hover:underline cursor-pointer">
+                        New AI chat
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="space-y-3">
+                    <h2 className="text-sm uppercase tracking-wider text-[#7a7a7a]">Recent Notes</h2>
+                    {isLoading ? (
+                      <p className="text-sm text-[#7a7a7a]">Loading notes...</p>
+                    ) : recentNotes.length === 0 ? (
+                      <p className="text-sm text-[#7a7a7a]">No notes yet.</p>
+                    ) : (
+                      <ul className="-mx-2">
+                        {recentNotes.map((note) => (
+                          <li key={note.id}>
+                            <button
+                              onClick={() => handleSelectNote(note.id)}
+                              className="w-full flex items-center gap-2 px-2 py-1 hover:bg-[#2a2a2a] rounded transition-colors cursor-pointer text-left"
+                            >
+                              <HomeNoteIcon icon={note.icon} hasContent={note.content.length > 0 && note.content !== "<p></p>"} content={note.content} />
+                              <span className="note-title-text text-[#9b9b9b] text-sm truncate">{note.title || "Untitled"}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </article>
               </div>
             </div>
           </div>
