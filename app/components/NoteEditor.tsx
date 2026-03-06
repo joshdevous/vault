@@ -1401,7 +1401,48 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       attributes: {
         class: "prose prose-invert max-w-none focus:outline-none h-full min-h-[120px] text-[#e3e3e3] text-base leading-relaxed",
       },
-      handleKeyDown: (_view, event) => {
+      handleKeyDown: (view, event) => {
+        if (
+          (event.ctrlKey || event.metaKey) &&
+          !event.shiftKey &&
+          !event.altKey &&
+          event.key.toLowerCase() === "x"
+        ) {
+          const { state } = view;
+          const { selection } = state;
+
+          if (selection.empty) {
+            const { $from } = selection;
+
+            let targetDepth = -1;
+            for (let depth = $from.depth; depth > 0; depth -= 1) {
+              const node = $from.node(depth);
+              if (node.type.name === "taskItem" || node.type.name === "listItem") {
+                targetDepth = depth;
+                break;
+              }
+            }
+
+            if (targetDepth < 0) {
+              for (let depth = $from.depth; depth > 0; depth -= 1) {
+                const node = $from.node(depth);
+                if (node.isBlock) {
+                  targetDepth = depth;
+                  break;
+                }
+              }
+            }
+
+            if (targetDepth > 0) {
+              event.preventDefault();
+              const from = $from.before(targetDepth);
+              const to = $from.after(targetDepth);
+              const tr = state.tr.delete(from, to);
+              view.dispatch(tr);
+              return true;
+            }
+          }
+        }
 
         if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
           event.preventDefault();
@@ -1412,6 +1453,26 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
 
           void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content);
           return true;
+        }
+
+        if (
+          event.key === "Backspace" &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey &&
+          !event.shiftKey
+        ) {
+          const { selection } = view.state;
+          if (selection.empty && selection.from <= 1) {
+            event.preventDefault();
+            const input = titleInputRef.current;
+            if (input) {
+              input.focus();
+              const end = input.value.length;
+              input.setSelectionRange(end, end);
+            }
+            return true;
+          }
         }
 
         return false;
