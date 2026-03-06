@@ -1299,9 +1299,29 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     }
 
     const imageNode = imageType.create({ src, alt, width: initialWidth });
-    tr = tr.replaceSelectionWith(imageNode);
+    const selection = tr.selection;
+    const currentParent = selection.$from.parent;
+    const isOnEmptyTextBlock =
+      selection.empty &&
+      currentParent.isTextblock &&
+      currentParent.textContent.trim().length === 0;
 
-    const insertPos = tr.selection.from;
+    let insertPos: number;
+    if (isOnEmptyTextBlock) {
+      let textBlockDepth = selection.$from.depth;
+      while (textBlockDepth > 0 && !selection.$from.node(textBlockDepth).isTextblock) {
+        textBlockDepth -= 1;
+      }
+
+      const blockFrom = selection.$from.before(textBlockDepth);
+      const blockTo = selection.$from.after(textBlockDepth);
+      tr = tr.delete(blockFrom, blockTo);
+      tr = tr.insert(blockFrom, imageNode);
+      insertPos = blockFrom + imageNode.nodeSize;
+    } else {
+      tr = tr.replaceSelectionWith(imageNode);
+      insertPos = tr.selection.from;
+    }
 
     if (paragraphType) {
       const paragraphNode = paragraphType.create();
