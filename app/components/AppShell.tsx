@@ -13,6 +13,7 @@ import { AIView } from "./AIView";
 import { SearchModal } from "./SearchModal";
 import { SettingsView } from "./SettingsView";
 import { Note, ListItem, Occasion } from "@/types/models";
+import { runStartupMigrations } from "@/lib/startupMigrations";
 
 type ViewType = "home" | "note" | "lists" | "memories" | "archive" | "fileCleaner" | "ai" | "settings";
 
@@ -207,6 +208,7 @@ export function AppShell() {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const [migrationsReady, setMigrationsReady] = useState(false);
   const [quickNoteShortcut, setQuickNoteShortcut] = useState(DEFAULT_QUICK_NOTE_SHORTCUT);
   const [quickAiShortcut, setQuickAiShortcut] = useState(DEFAULT_QUICK_AI_SHORTCUT);
   const [quickNoteEnabled, setQuickNoteEnabled] = useState(true);
@@ -220,6 +222,11 @@ export function AppShell() {
 
   // Load saved state from localStorage after hydration
   useEffect(() => {
+    const { appliedMigrations } = runStartupMigrations();
+    if (appliedMigrations.length > 0) {
+      console.info("[startup-migrations] applied", appliedMigrations);
+    }
+
     const savedThemeMode = localStorage.getItem(THEME_MODE_STORAGE_KEY);
     if (savedThemeMode === "light" || savedThemeMode === "dark") {
       applyThemeMode(savedThemeMode);
@@ -236,6 +243,8 @@ export function AppShell() {
     };
 
     window.addEventListener(THEME_MODE_EVENT, handleThemeUpdated as EventListener);
+    setMigrationsReady(true);
+
     return () => {
       window.removeEventListener(THEME_MODE_EVENT, handleThemeUpdated as EventListener);
     };
@@ -1130,7 +1139,7 @@ export function AppShell() {
   };
 
   // Don't render until hydrated to prevent flash of wrong content
-  if (!hydrated) {
+  if (!hydrated || !migrationsReady) {
     return (
       <div className="flex flex-1 overflow-hidden bg-[#191919]">
         <div className="w-64 border-r border-[#2f2f2f] bg-[#1e1e1e]" />
