@@ -356,7 +356,7 @@ function NoteItem({
               className={`p-0.5 hover:bg-[rgba(255,255,255,0.1)] rounded transition-all cursor-pointer ${
                 usePermanentDeleteAction ? "text-red-400 hover:text-red-300" : "text-[#6b6b6b] hover:text-[#aeaeae]"
               }`}
-              title={usePermanentDeleteAction ? "Delete permanently" : "Archive note"}
+              title={usePermanentDeleteAction ? "Delete" : "Archive note"}
             >
               {usePermanentDeleteAction ? (
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1185,16 +1185,30 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
             )}
           </button>
           <button
-            className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
+            className={`w-full flex items-center gap-2 px-2 py-[3px] text-sm rounded-[6px] transition-all text-left cursor-pointer ${
+              isCtrlPressed
+                ? "text-red-400 hover:text-red-300 hover:bg-[rgba(255,255,255,0.055)]"
+                : "text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb]"
+            }`}
             onClick={() => {
-              onArchiveNote(contextMenu.noteId);
+              if (isCtrlPressed) {
+                onDeletePermanently(contextMenu.noteId);
+              } else {
+                onArchiveNote(contextMenu.noteId);
+              }
               setContextMenu(null);
             }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
-            Archive
+            {isCtrlPressed ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            )}
+            {isCtrlPressed ? "Delete" : "Archive"}
           </button>
         </div>
       )}
