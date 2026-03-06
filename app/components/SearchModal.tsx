@@ -7,11 +7,11 @@ interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectNote: (id: string) => void;
-  onSelectVault: () => void;
+  onSelectLists: () => void;
   onSelectMemories: () => void;
 }
 
-export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSelectMemories }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, onSelectNote, onSelectLists, onSelectMemories }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,8 +102,8 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
     
     if (result.type === "note") {
       onSelectNote(result.id);
-    } else if (result.type === "vault") {
-      onSelectVault();
+    } else if (result.type === "list") {
+      onSelectLists();
     } else if (result.type === "memory") {
       onSelectMemories();
     }
@@ -118,7 +118,7 @@ export function SearchModal({ isOpen, onClose, onSelectNote, onSelectVault, onSe
     const type = result.type;
     switch (type) {
       case "note": return "Note";
-      case "vault": return "Vault";
+      case "list": return "List";
       case "memory": return "Memory";
     }
   };

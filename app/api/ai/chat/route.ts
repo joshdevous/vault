@@ -56,8 +56,8 @@ async function getRelevantContext(query: string, limit: number = 5): Promise<str
     }
   }
 
-  // Search vault items
-  const vaultItems = await prisma.vaultItem.findMany({
+  // Search list items
+  const listItems = await prisma.vaultItem.findMany({
     where: {
       OR: keywords.flatMap(kw => [
         { key: { contains: kw } },
@@ -67,8 +67,8 @@ async function getRelevantContext(query: string, limit: number = 5): Promise<str
     take: limit,
   });
 
-  for (const item of vaultItems) {
-    context.push(`[Vault: ${item.key}]\n${item.value.slice(0, 200)}`);
+  for (const item of listItems) {
+    context.push(`[List: ${item.key}]\n${item.value.slice(0, 200)}`);
   }
 
   // Search memories
@@ -232,7 +232,7 @@ Answer questions about this note, help expand on ideas, suggest improvements, or
     const providerMessages = await normaliseMessagesForProvider(messages);
 
     // Build system prompt with context
-    const systemPrompt = `You are a helpful AI assistant integrated into Vault, a personal notes and memories app. You have access to the user's notes, vault items, and memories to help answer their questions.
+    const systemPrompt = `You are a helpful AI assistant integrated into this app, a personal notes and memories workspace. You have access to the user's notes, list items, and memories to help answer their questions.
 
 ${contextSection}
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export interface SearchResult {
-  type: "note" | "vault" | "memory";
+  type: "note" | "list" | "memory";
   noteKind?: "note" | "sheet";
   id: string;
   title: string;
@@ -67,7 +67,7 @@ function sheetContentToText(content: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
-  const types = searchParams.get("types")?.split(",") || ["note", "vault", "memory"];
+  const types = searchParams.get("types")?.split(",") || ["note", "list", "memory"];
   const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
 
   if (!query || query.length < 2) {
@@ -111,9 +111,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Search vault items
-    if (types.includes("vault")) {
-      const vaultItems = await prisma.vaultItem.findMany({
+    // Search list items
+    if (types.includes("list")) {
+      const listItems = await prisma.vaultItem.findMany({
         where: {
           OR: [
             { key: { contains: query } },
@@ -125,11 +125,11 @@ export async function GET(request: NextRequest) {
         take: limit,
       });
 
-      for (const item of vaultItems) {
+      for (const item of listItems) {
         const matchInKey = item.key.toLowerCase().includes(query.toLowerCase());
         
         results.push({
-          type: "vault",
+          type: "list",
           id: item.id,
           title: item.key,
           snippet: matchInKey 

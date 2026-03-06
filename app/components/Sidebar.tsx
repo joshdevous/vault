@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Note } from "@/types/models";
 import { IconPicker } from "./IconPicker";
 
-type SectionKey = "notes" | "vault" | "memories" | "dreamJournal" | "voiceLog";
+type SectionKey = "notes" | "lists" | "memories" | "dreamJournal" | "voiceLog";
 type SidebarVisibilityKey = SectionKey | "fileCleaner";
 
 interface NoteWithChildren extends Note {
@@ -18,7 +18,7 @@ interface ContextMenuState {
 }
 
 interface SidebarProps {
-  currentView: "home" | "note" | "vault" | "memories" | "archive" | "fileCleaner" | "ai" | "settings";
+  currentView: "home" | "note" | "lists" | "memories" | "archive" | "fileCleaner" | "ai" | "settings";
   selectedNoteId?: string | null;
   onSelectNote: (id: string) => void;
   onCreateNote: (parentId?: string, kind?: "note" | "spreadsheet") => void;
@@ -26,8 +26,8 @@ interface SidebarProps {
   onDeletePermanently: (id: string) => void;
   onRenameNote: (id: string, newTitle: string) => void;
   onMoveNote: (noteId: string, newParentId: string | null, newOrder: number) => void;
-  onOpenVault: () => void;
-  onOpenVaultAddModal: (tag?: string) => void;
+  onOpenLists: () => void;
+  onOpenListsAddModal: (tag?: string) => void;
   onOpenMemories: () => void;
   onOpenMemoryAddModal: () => void;
   onOpenArchive: () => void;
@@ -449,17 +449,17 @@ const QUICK_ACCESS_UPDATED_EVENT = "vault-quick-access-updated";
 
 const defaultSidebarVisibility: SidebarVisibilityState = {
   notes: true,
-  vault: false,
+  lists: false,
   memories: false,
   dreamJournal: false,
   voiceLog: false,
   fileCleaner: true,
 };
 
-export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onDeletePermanently, onRenameNote, onMoveNote, onOpenVault, onOpenVaultAddModal, onOpenMemories, onOpenMemoryAddModal, onOpenArchive, onOpenFileCleaner, onOpenAI, onOpenSearch, onOpenSettings, onUpdateNote, notes }: SidebarProps) {
+export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNote, onArchiveNote, onDeletePermanently, onRenameNote, onMoveNote, onOpenLists, onOpenListsAddModal, onOpenMemories, onOpenMemoryAddModal, onOpenArchive, onOpenFileCleaner, onOpenAI, onOpenSearch, onOpenSettings, onUpdateNote, notes }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     notes: true,
-    vault: true,
+    lists: true,
     memories: true,
     dreamJournal: true,
     voiceLog: true,
@@ -509,7 +509,11 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
 
     const savedVisibleSections = localStorage.getItem("sidebar-visible-sections");
     if (savedVisibleSections) {
-      const parsed = JSON.parse(savedVisibleSections) as Partial<SidebarVisibilityState>;
+      const parsedRaw = JSON.parse(savedVisibleSections) as Record<string, boolean>;
+      const parsed: Partial<SidebarVisibilityState> = {
+        ...parsedRaw,
+        lists: parsedRaw.lists ?? parsedRaw.vault,
+      };
       setVisibleSections({
         ...defaultSidebarVisibility,
         ...parsed,
@@ -962,23 +966,23 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
           </>
         )}
 
-        {visibleSections.vault && (
+        {visibleSections.lists && (
           <>
-            {/* VAULT Section */}
+            {/* LISTS Section */}
             <div className="flex items-center justify-between mt-5">
               <div
                 className="sidebar-section-label flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[#91918e] uppercase tracking-wider cursor-pointer hover:text-[#aeaeae] rounded transition-colors"
-                onClick={() => onOpenVault()}
+                onClick={() => onOpenLists()}
               >
-                <span>Vault</span>
+                <span>Lists</span>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onOpenVaultAddModal();
+                  onOpenListsAddModal();
                 }}
                 className="p-1 text-[#6b6b6b] hover:text-[#aeaeae] hover:bg-[rgba(255,255,255,0.055)] rounded transition-all"
-                title="Add to vault"
+                title="Add to lists"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1282,11 +1286,11 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
             </>
           )}
 
-          {visibleSections.vault && (
+          {visibleSections.lists && (
             <button
               className="w-full flex items-center gap-2 px-2 py-[3px] text-sm text-[#ebebeb80] hover:bg-[rgba(255,255,255,0.055)] hover:text-[#ebebeb] rounded-[6px] transition-all text-left cursor-pointer"
               onClick={() => {
-                onOpenVaultAddModal();
+                onOpenListsAddModal();
                 setCreateMenu(null);
               }}
             >
@@ -1295,7 +1299,7 @@ export function Sidebar({ currentView, selectedNoteId, onSelectNote, onCreateNot
                 <path d="M12 8v8"/>
                 <path d="M8 12h8"/>
               </svg>
-              Vault Item
+              List Item
             </button>
           )}
 

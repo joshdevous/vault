@@ -10,7 +10,7 @@ export interface Note {
   updatedAt: string;
 }
 
-export interface VaultItem {
+export interface ListItem {
   id: string;
   key: string;
   value: string;
@@ -18,6 +18,8 @@ export interface VaultItem {
   createdAt: string;
   updatedAt: string;
 }
+
+export type VaultItem = ListItem;
 
 export interface Occasion {
   id: string;

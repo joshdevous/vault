@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { NoteEditor, ChatMessage } from "./NoteEditor";
-import { VaultView } from "./VaultView";
-import { VaultAddModal } from "./VaultAddModal";
+import { ListsView } from "./ListsView";
+import { ListsAddModal } from "./ListsAddModal";
 import { MemoriesView } from "./MemoriesView";
 import { MemoryAddModal } from "./MemoryAddModal";
 import { ArchiveView } from "./ArchiveView";
@@ -12,9 +12,9 @@ import { FileCleanerView } from "./FileCleanerView";
 import { AIView } from "./AIView";
 import { SearchModal } from "./SearchModal";
 import { SettingsView } from "./SettingsView";
-import { Note, VaultItem, Occasion } from "@/types/models";
+import { Note, ListItem, Occasion } from "@/types/models";
 
-type ViewType = "home" | "note" | "vault" | "memories" | "archive" | "fileCleaner" | "ai" | "settings";
+type ViewType = "home" | "note" | "lists" | "memories" | "archive" | "fileCleaner" | "ai" | "settings";
 
 const THEME_MODE_STORAGE_KEY = "vault-theme-mode";
 const THEME_MODE_EVENT = "vault-theme-updated";
@@ -197,13 +197,13 @@ function getDescendantNoteIds(notes: Note[], rootId: string): string[] {
 
 export function AppShell() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
+  const [listItems, setListItems] = useState<ListItem[]>([]);
   const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewType>("home");
   const [selectedOccasionId, setSelectedOccasionId] = useState<string | null>(null);
   const [selectedArchivedNoteId, setSelectedArchivedNoteId] = useState<string | null>(null);
-  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [isListsModalOpen, setIsListsModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -440,16 +440,16 @@ export function AppShell() {
     }
   }, [archiveAutoDeleteDays, fetchNotes, selectedArchivedNoteId]);
 
-  // Fetch all vault items
-  const fetchVaultItems = useCallback(async () => {
+  // Fetch all list items
+  const fetchListItems = useCallback(async () => {
     try {
-      const res = await fetch("/api/vault");
+      const res = await fetch("/api/lists");
       if (res.ok) {
         const data = await res.json();
-        setVaultItems(data);
+        setListItems(data);
       }
     } catch (error) {
-      console.error("Failed to fetch vault items:", error);
+      console.error("Failed to fetch list items:", error);
     }
   }, []);
 
@@ -468,9 +468,9 @@ export function AppShell() {
 
   useEffect(() => {
     fetchNotes();
-    fetchVaultItems();
+    fetchListItems();
     fetchOccasions();
-  }, [fetchNotes, fetchVaultItems, fetchOccasions]);
+  }, [fetchNotes, fetchListItems, fetchOccasions]);
 
   useEffect(() => {
     if (!hydrated) {
@@ -604,17 +604,17 @@ export function AppShell() {
     setCurrentView("note");
   };
 
-  // Open vault view
-  const handleOpenVault = () => {
+  // Open lists view
+  const handleOpenLists = () => {
     setSelectedNoteId(null);
-    setCurrentView("vault");
+    setCurrentView("lists");
   };
 
-  // Compute available tags for vault (priority tags first, then others by usage count)
+  // Compute available tags for lists (priority tags first, then others by usage count)
   const priorityTags = ["shows", "music", "topics", "food", "youtube", "work"];
-  const availableVaultTags = (() => {
+  const availableListTags = (() => {
     const tagCounts = new Map<string, number>();
-    vaultItems.forEach((item) => {
+    listItems.forEach((item) => {
       if (item.tags) {
         item.tags.split(",").forEach((t) => {
           const trimmed = t.trim().toLowerCase();
@@ -631,11 +631,11 @@ export function AppShell() {
     return [...existingPriority, ...remainingTags];
   })();
 
-  // Open vault add modal
-  const [vaultModalInitialTag, setVaultModalInitialTag] = useState<string | undefined>(undefined);
-  const handleOpenVaultAddModal = (tag?: string) => {
-    setVaultModalInitialTag(tag);
-    setIsVaultModalOpen(true);
+  // Open lists add modal
+  const [listsModalInitialTag, setListsModalInitialTag] = useState<string | undefined>(undefined);
+  const handleOpenListsAddModal = (tag?: string) => {
+    setListsModalInitialTag(tag);
+    setIsListsModalOpen(true);
   };
 
   // Update note in list
@@ -877,10 +877,10 @@ export function AppShell() {
     }
   };
 
-  // Create vault item
-  const handleCreateVaultItem = async (key: string, value: string, tags?: string) => {
+  // Create list item
+  const handleCreateListItem = async (key: string, value: string, tags?: string) => {
     try {
-      const res = await fetch("/api/vault", {
+      const res = await fetch("/api/lists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key, value, tags: tags || "" }),
@@ -888,26 +888,26 @@ export function AppShell() {
 
       if (res.ok) {
         const newItem = await res.json();
-        setVaultItems((prev) => [newItem, ...prev]);
+        setListItems((prev) => [newItem, ...prev]);
         return newItem;
       }
     } catch (error) {
-      console.error("Failed to create vault item:", error);
+      console.error("Failed to create list item:", error);
     }
   };
 
-  // Delete vault item
-  const handleDeleteVaultItem = async (id: string) => {
+  // Delete list item
+  const handleDeleteListItem = async (id: string) => {
     try {
-      const res = await fetch(`/api/vault/${id}`, {
+      const res = await fetch(`/api/lists/${id}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        setVaultItems((prev) => prev.filter((item) => item.id !== id));
+        setListItems((prev) => prev.filter((item) => item.id !== id));
       }
     } catch (error) {
-      console.error("Failed to delete vault item:", error);
+      console.error("Failed to delete list item:", error);
     }
   };
 
@@ -1159,8 +1159,8 @@ export function AppShell() {
         onDeletePermanently={handleDeletePermanently}
         onRenameNote={handleRenameNote}
         onMoveNote={handleMoveNote}
-        onOpenVault={handleOpenVault}
-        onOpenVaultAddModal={handleOpenVaultAddModal}
+        onOpenLists={handleOpenLists}
+        onOpenListsAddModal={handleOpenListsAddModal}
         onOpenMemories={handleOpenMemories}
         onOpenMemoryAddModal={handleOpenMemoryAddModal}
         onOpenArchive={handleOpenArchive}
@@ -1183,11 +1183,11 @@ export function AppShell() {
             allChatMessages={allChatMessages}
             setAllChatMessages={setAllChatMessages}
           />
-        ) : currentView === "vault" ? (
-          <VaultView
-            vaultItems={vaultItems}
-            onDeleteVaultItem={handleDeleteVaultItem}
-            onOpenAddModal={handleOpenVaultAddModal}
+        ) : currentView === "lists" ? (
+          <ListsView
+            listItems={listItems}
+            onDeleteListItem={handleDeleteListItem}
+            onOpenAddModal={handleOpenListsAddModal}
           />
         ) : currentView === "memories" ? (
           <MemoriesView
@@ -1337,15 +1337,15 @@ export function AppShell() {
         )}
       </main>
       
-      {/* Vault Add Modal */}
-      <VaultAddModal
-        isOpen={isVaultModalOpen}
-        onClose={() => { setIsVaultModalOpen(false); setVaultModalInitialTag(undefined); }}
+      {/* Lists Add Modal */}
+      <ListsAddModal
+        isOpen={isListsModalOpen}
+        onClose={() => { setIsListsModalOpen(false); setListsModalInitialTag(undefined); }}
         onAdd={async (key, value, tags) => {
-          await handleCreateVaultItem(key, value, tags);
+          await handleCreateListItem(key, value, tags);
         }}
-        initialTag={vaultModalInitialTag}
-        availableTags={availableVaultTags}
+        initialTag={listsModalInitialTag}
+        availableTags={availableListTags}
       />
 
       {/* Memory Add Modal */}
@@ -1366,9 +1366,9 @@ export function AppShell() {
           setSelectedNoteId(id);
           setCurrentView("note");
         }}
-        onSelectVault={() => {
+        onSelectLists={() => {
           setIsSearchModalOpen(false);
-          setCurrentView("vault");
+          setCurrentView("lists");
         }}
         onSelectMemories={() => {
           setIsSearchModalOpen(false);

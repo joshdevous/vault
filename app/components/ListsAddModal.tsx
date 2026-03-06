@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-interface VaultAddModalProps {
+interface ListsAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (key: string, value: string, tags?: string) => Promise<void>;
@@ -10,7 +10,7 @@ interface VaultAddModalProps {
   availableTags?: string[];
 }
 
-export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTags = [] }: VaultAddModalProps) {
+export function ListsAddModal({ isOpen, onClose, onAdd, initialTag, availableTags = [] }: ListsAddModalProps) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [tags, setTags] = useState("");
@@ -27,7 +27,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
     }
   }, [isOpen, initialTag]);
 
-  // Check if URL is a YouTube link
   const isYouTubeUrl = (url: string): boolean => {
     const patterns = [
       /^https?:\/\/(www\.)?youtube\.com\/watch\?v=/,
@@ -37,7 +36,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
     return patterns.some((pattern) => pattern.test(url));
   };
 
-  // Check if string is a valid URL
   const isValidUrl = (str: string): boolean => {
     try {
       const url = new URL(str);
@@ -47,7 +45,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
     }
   };
 
-  // Fetch YouTube video title using oEmbed
   const fetchYouTubeTitle = async (url: string): Promise<string | null> => {
     try {
       const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
@@ -62,7 +59,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
     return null;
   };
 
-  // Fetch page title via our API
   const fetchPageTitle = async (url: string): Promise<string | null> => {
     try {
       const res = await fetch(`/api/fetch-title?url=${encodeURIComponent(url)}`);
@@ -76,27 +72,23 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
     return null;
   };
 
-  // Handle paste in value field
   const handleValuePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pastedText = e.clipboardData.getData("text").trim();
-    
-    // Only auto-fetch if key is empty
+
     if (!key && isValidUrl(pastedText)) {
       setIsFetchingTitle(true);
-      
+
       let title: string | null = null;
-      
-      // Use YouTube oEmbed for YouTube links (faster, more reliable)
+
       if (isYouTubeUrl(pastedText)) {
         title = await fetchYouTubeTitle(pastedText);
         if (title) {
           setTags((prev) => prev ? `${prev}, youtube` : "youtube");
         }
       } else {
-        // Use our API for other URLs
         title = await fetchPageTitle(pastedText);
       }
-      
+
       if (title) {
         setKey(title);
       }
@@ -113,7 +105,7 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
 
   const handleSubmit = async () => {
     if (!key.trim() || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       await onAdd(key.trim(), value.trim(), tags.trim());
@@ -135,21 +127,18 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={handleClose}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" />
-      
-      {/* Modal */}
-      <div 
+
+      <div
         className="relative bg-[#252525] border border-[#3f3f3f] rounded-lg shadow-2xl w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#3f3f3f]">
-          <h2 className="text-sm font-medium text-[#ebebeb]">Add to Vault</h2>
+          <h2 className="text-sm font-medium text-[#ebebeb]">Add to Lists</h2>
           <button
             onClick={handleClose}
             className="p-1 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
@@ -160,7 +149,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-4 space-y-3">
           <div>
             <label className="block text-xs text-[#9b9b9b] mb-1.5">
@@ -199,7 +187,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
               onKeyDown={handleKeyDown}
               className="w-full bg-[#1a1a1a] text-[#ebebeb] text-sm px-3 py-2 rounded-md outline-none border border-[#3f3f3f] focus:border-[#5f5f5f] placeholder-[#6b6b6b]"
             />
-            {/* Quick tag buttons */}
             <div className="flex flex-wrap gap-1.5 mt-2">
               {availableTags.map((tag) => {
                 const tagList = tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
@@ -210,11 +197,9 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
                     type="button"
                     onClick={() => {
                       if (isActive) {
-                        // Remove tag
                         const newTags = tagList.filter((t) => t !== tag).join(", ");
                         setTags(newTags);
                       } else {
-                        // Add tag
                         const newTags = tags.trim() ? `${tags.trim()}, ${tag}` : tag;
                         setTags(newTags);
                       }
@@ -233,7 +218,6 @@ export function VaultAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#3f3f3f]">
           <button
             onClick={handleClose}

@@ -1,26 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { VaultItem } from "@/types/models";
+import { ListItem } from "@/types/models";
 
-interface VaultViewProps {
-  vaultItems: VaultItem[];
-  onDeleteVaultItem: (id: string) => void;
+interface ListsViewProps {
+  listItems: ListItem[];
+  onDeleteListItem: (id: string) => void;
   onOpenAddModal: (tag?: string) => void;
 }
 
-export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: VaultViewProps) {
+export function ListsView({ listItems, onDeleteListItem, onOpenAddModal }: ListsViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Priority tags that always show first (in this order)
   const priorityTags = ["shows", "music", "topics", "food", "youtube", "work"];
-  
-  // Compute all unique tags from vault items
+
   const allTags = (() => {
     const tagCounts = new Map<string, number>();
-    vaultItems.forEach((item) => {
+    listItems.forEach((item) => {
       if (item.tags) {
         item.tags.split(",").forEach((t) => {
           const trimmed = t.trim().toLowerCase();
@@ -30,8 +28,7 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
         });
       }
     });
-    
-    // Priority tags first (only if they exist in items), then remaining tags by usage count
+
     const existingPriority = priorityTags.filter((t) => tagCounts.has(t));
     const remainingTags = [...tagCounts.keys()]
       .filter((t) => !priorityTags.includes(t))
@@ -39,16 +36,14 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
     return [...existingPriority, ...remainingTags];
   })();
 
-  const filteredItems = vaultItems.filter((item) => {
-    // First filter by active tag if set
+  const filteredItems = listItems.filter((item) => {
     if (activeTag) {
-      const itemTags = item.tags.toLowerCase().split(",").map(t => t.trim());
+      const itemTags = item.tags.toLowerCase().split(",").map((t) => t.trim());
       if (!itemTags.includes(activeTag.toLowerCase())) {
         return false;
       }
     }
-    
-    // Then filter by search query
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -57,16 +52,16 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
         item.tags.toLowerCase().includes(query)
       );
     }
-    
+
     return true;
   });
 
   const handleTagClick = (tag: string) => {
     if (activeTag === tag) {
-      setActiveTag(null); // Toggle off
+      setActiveTag(null);
     } else {
       setActiveTag(tag);
-      setSearchQuery(""); // Clear search when selecting tag
+      setSearchQuery("");
     }
   };
 
@@ -76,7 +71,6 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Check if a value is a URL
   const isUrl = (str: string): boolean => {
     try {
       const url = new URL(str);
@@ -88,19 +82,16 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top bar */}
       <div className="flex items-center h-11 px-4 border-b border-[#2f2f2f] shrink-0">
         <div className="flex items-center gap-1 text-sm text-[#9b9b9b]">
-          <span>Vault</span>
+          <span>Lists</span>
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-12 py-12">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-[#e3e3e3]">Vault</h1>
+            <h1 className="text-3xl font-bold text-[#e3e3e3]">Lists</h1>
             <button
               onClick={() => onOpenAddModal(activeTag || undefined)}
               className="flex items-center gap-2 px-3 py-1.5 bg-[#2f2f2f] hover:bg-[#3f3f3f] text-[#ebebeb] text-sm rounded-md transition-colors"
@@ -112,21 +103,19 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
             </button>
           </div>
 
-          {/* Search */}
           <div className="relative mb-4">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
-              placeholder="Search vault..."
+              placeholder="Search lists..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setActiveTag(null); }}
               className="w-full bg-[#2f2f2f] text-[#ebebeb] text-sm pl-10 pr-4 py-2 rounded-md outline-none border border-transparent focus:border-[#4f4f4f] placeholder-[#6b6b6b]"
             />
           </div>
 
-          {/* Quick filter tags */}
           <div className="flex flex-wrap gap-2 mb-6">
             {allTags.map((tag) => (
               <button
@@ -151,11 +140,10 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
             )}
           </div>
 
-          {/* Vault items */}
           {filteredItems.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-[#6b6b6b]">
-                {searchQuery || activeTag ? "No items match your search" : "No items in the vault yet"}
+                {searchQuery || activeTag ? "No items match your search" : "No items in lists yet"}
               </p>
               {!searchQuery && !activeTag && (
                 <button
@@ -228,7 +216,7 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
                         )}
                       </button>
                       <button
-                        onClick={() => onDeleteVaultItem(item.id)}
+                        onClick={() => onDeleteListItem(item.id)}
                         className="p-2 text-[#6b6b6b] hover:text-[#ff6b6b] hover:bg-[#3f3f3f] rounded transition-colors"
                         title="Delete"
                       >
@@ -243,7 +231,6 @@ export function VaultView({ vaultItems, onDeleteVaultItem, onOpenAddModal }: Vau
             </div>
           )}
 
-          {/* Item count */}
           {filteredItems.length > 0 && (
             <p className="text-xs text-[#6b6b6b] mt-6 text-center">
               {filteredItems.length} {filteredItems.length === 1 ? "item" : "items"}

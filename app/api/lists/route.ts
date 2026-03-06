@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET all vault items
+// GET all list items
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
 
-    const vaultItems = await prisma.vaultItem.findMany({
+    const listItems = await prisma.vaultItem.findMany({
       where: search
         ? {
             OR: [
@@ -19,14 +19,14 @@ export async function GET(request: NextRequest) {
         : undefined,
       orderBy: { createdAt: "desc" },
     });
-    return NextResponse.json(vaultItems);
+    return NextResponse.json(listItems);
   } catch (error) {
-    console.error("Failed to fetch vault items:", error);
-    return NextResponse.json({ error: "Failed to fetch vault items" }, { status: 500 });
+    console.error("Failed to fetch list items:", error);
+    return NextResponse.json({ error: "Failed to fetch list items" }, { status: 500 });
   }
 }
 
-// POST create new vault item
+// POST create new list item
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -36,16 +36,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Key is required" }, { status: 400 });
     }
 
-    const vaultItem = await prisma.vaultItem.create({
+    const listItem = await prisma.vaultItem.create({
       data: {
         key,
         value: value || "",
         tags: tags || "",
       },
     });
-    return NextResponse.json(vaultItem);
+    return NextResponse.json(listItem);
   } catch (error) {
-    console.error("Failed to create vault item:", error);
-    return NextResponse.json({ error: "Failed to create vault item" }, { status: 500 });
+    console.error("Failed to create list item:", error);
+    return NextResponse.json({ error: "Failed to create list item" }, { status: 500 });
   }
 }

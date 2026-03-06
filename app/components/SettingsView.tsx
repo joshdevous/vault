@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type SectionKey = "notes" | "vault" | "memories" | "dreamJournal" | "voiceLog";
+type SectionKey = "notes" | "lists" | "memories" | "dreamJournal" | "voiceLog";
 type SidebarVisibilityKey = SectionKey | "fileCleaner";
 
 type SidebarVisibilityState = Record<SidebarVisibilityKey, boolean>;
@@ -57,7 +57,7 @@ function formatShortcutFromEvent(event: ShortcutKeyboardEvent): string | null {
 
 const defaultSidebarVisibility: SidebarVisibilityState = {
   notes: true,
-  vault: false,
+  lists: false,
   memories: false,
   dreamJournal: false,
   voiceLog: false,
@@ -66,7 +66,7 @@ const defaultSidebarVisibility: SidebarVisibilityState = {
 
 const sectionLabels: Record<SidebarVisibilityKey, string> = {
   notes: "Notes",
-  vault: "Vault",
+  lists: "Lists",
   memories: "Memories (WIP)",
   dreamJournal: "Dream Journal (WIP)",
   voiceLog: "Voice Log (WIP)",
@@ -122,8 +122,12 @@ export function SettingsView() {
     const savedSidebar = localStorage.getItem(SIDEBAR_VISIBILITY_STORAGE_KEY);
     if (savedSidebar) {
       try {
-        const parsed = JSON.parse(savedSidebar) as Partial<SidebarVisibilityState>;
-        setSidebarVisibility({ ...defaultSidebarVisibility, ...parsed });
+        const parsedRaw = JSON.parse(savedSidebar) as Record<string, boolean>;
+        const migrated: Partial<SidebarVisibilityState> = {
+          ...parsedRaw,
+          lists: parsedRaw.lists ?? parsedRaw.vault,
+        };
+        setSidebarVisibility({ ...defaultSidebarVisibility, ...migrated });
       } catch {
         setSidebarVisibility(defaultSidebarVisibility);
       }
