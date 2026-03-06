@@ -2041,18 +2041,20 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
             )}
             <button
               onClick={handleToggleLock}
-              className={`p-1.5 rounded transition-colors ${isLocked ? "bg-[#3f3f3f] text-[#e3e3e3]" : "text-[#6b6b6b] hover:text-[#e3e3e3] hover:bg-[#3f3f3f]"}`}
+              className={`p-1.5 rounded transition-colors ${isLocked ? "text-[#7eb8f7] bg-[#3f3f3f]" : "text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f]"}`}
               title={isLocked ? "Unlock editing" : "Lock editing"}
             >
               {isLocked ? (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <rect x="5" y="11" width="14" height="10" rx="2" strokeWidth="2" />
-                  <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M8 11V8a4 4 0 1 1 8 0v3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="16" r="1.25" fill="currentColor" stroke="none" />
                 </svg>
               ) : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <rect x="5" y="11" width="14" height="10" rx="2" strokeWidth="2" />
-                  <path d="M11 11V8a4 4 0 0 1 7 0" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M10 11V8a4 4 0 1 1 8 0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="16" r="1.25" fill="currentColor" stroke="none" />
                 </svg>
               )}
             </button>
@@ -2078,6 +2080,19 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         {/* Editor content */}
         <div className="flex-1 overflow-auto">
           <div className={isSpreadsheetNote ? "h-full flex flex-col" : "max-w-3xl mx-auto px-16 py-12 h-full flex flex-col"}>
+            {isLocked && (
+              <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-md border border-[#2f2f2f] bg-[#202020] px-2.5 py-1.5">
+                <svg className="w-3.5 h-3.5 text-[#7eb8f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="5" y="11" width="14" height="10" rx="2" strokeWidth="2" />
+                  <path d="M8 11V8a4 4 0 1 1 8 0v3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#7eb8f7]">Locked</span>
+                <span className="tracking-[0.15em] text-[#6b6b6b]">••••••••••</span>
+                <span className="text-xs text-[#8f8f8f]">Unlock to edit</span>
+              </div>
+            )}
+
             {/* Title */}
             {!isSpreadsheetNote && (
               <input
