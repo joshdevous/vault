@@ -853,6 +853,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const slashMenuSelectedIndexRef = useRef(0);
   const [tableHoverControls, setTableHoverControls] = useState<TableHoverControls | null>(null);
   const hoveredTableRef = useRef<HTMLTableElement | null>(null);
+  const tableHoverHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isNearBottom = (element: HTMLDivElement) =>
     element.scrollHeight - element.scrollTop - element.clientHeight < 96;
@@ -980,6 +981,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   }, [note.icon, note.id, onUpdate]);
 
   const showTableHoverControls = useCallback((tableElement: HTMLTableElement) => {
+    if (tableHoverHideTimeoutRef.current) {
+      clearTimeout(tableHoverHideTimeoutRef.current);
+      tableHoverHideTimeoutRef.current = null;
+    }
+
     const tableRect = tableElement.getBoundingClientRect();
     if (tableRect.width <= 0 || tableRect.height <= 0) {
       setTableHoverControls(null);
@@ -996,10 +1002,25 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     });
   }, []);
 
+  const cancelTableHoverControlsHide = useCallback(() => {
+    if (tableHoverHideTimeoutRef.current) {
+      clearTimeout(tableHoverHideTimeoutRef.current);
+      tableHoverHideTimeoutRef.current = null;
+    }
+  }, []);
+
   const clearTableHoverControls = useCallback(() => {
     hoveredTableRef.current = null;
     setTableHoverControls(null);
   }, []);
+
+  const scheduleTableHoverControlsHide = useCallback(() => {
+    cancelTableHoverControlsHide();
+    tableHoverHideTimeoutRef.current = setTimeout(() => {
+      clearTableHoverControls();
+      tableHoverHideTimeoutRef.current = null;
+    }, 140);
+  }, [cancelTableHoverControlsHide, clearTableHoverControls]);
 
   const addColumnFromHover = useCallback(() => {
     const currentEditor = editorRef.current;
@@ -2010,8 +2031,18 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   useEffect(() => {
     setSlashMenuState(null);
     setSlashMenuSelectedIndex(0);
+    cancelTableHoverControlsHide();
     clearTableHoverControls();
-  }, [note.id, isSpreadsheetNote, isLocked, showCallNoteView]);
+  }, [cancelTableHoverControlsHide, clearTableHoverControls, note.id, isSpreadsheetNote, isLocked, showCallNoteView]);
+
+  useEffect(() => {
+    return () => {
+      if (tableHoverHideTimeoutRef.current) {
+        clearTimeout(tableHoverHideTimeoutRef.current);
+        tableHoverHideTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Update editor content when note changes, including external updates to same note
   useEffect(() => {
@@ -2567,32 +2598,40 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                   onMouseMove={(event) => {
                     const target = event.target as HTMLElement | null;
                     if (!target) {
-                      clearTableHoverControls();
+                      scheduleTableHoverControlsHide();
                       return;
                     }
 
                     if (target.closest('[data-table-hover-controls="true"]')) {
+                      cancelTableHoverControlsHide();
                       return;
                     }
 
                     const tableElement = target.closest("table") as HTMLTableElement | null;
                     if (!tableElement || isLocked) {
-                      clearTableHoverControls();
+                      scheduleTableHoverControlsHide();
                       return;
                     }
 
                     showTableHoverControls(tableElement);
                   }}
                   onMouseLeave={() => {
-                    clearTableHoverControls();
+                    scheduleTableHoverControlsHide();
                   }}
                 />
                 {!isLocked && tableHoverControls && (
                   <>
                     <button
                       data-table-hover-controls="true"
+                      onMouseEnter={() => {
+                        cancelTableHoverControlsHide();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleTableHoverControlsHide();
+                      }}
                       onMouseDown={(event) => {
                         event.preventDefault();
+                        cancelTableHoverControlsHide();
                         addColumnFromHover();
                       }}
                       className="fixed z-[80] h-5 w-5 -translate-y-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
@@ -2606,8 +2645,15 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                     </button>
                     <button
                       data-table-hover-controls="true"
+                      onMouseEnter={() => {
+                        cancelTableHoverControlsHide();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleTableHoverControlsHide();
+                      }}
                       onMouseDown={(event) => {
                         event.preventDefault();
+                        cancelTableHoverControlsHide();
                         addRowFromHover();
                       }}
                       className="fixed z-[80] h-5 w-5 -translate-x-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
