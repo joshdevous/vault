@@ -162,6 +162,85 @@ async function normaliseMessagesForProvider(messages: Array<{ role: string; cont
   return normalised;
 }
 
+function normaliseEndpoint(endpoint: string): string {
+  const raw = endpoint.trim();
+  if (!raw) return "";
+
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw.replace(/\/+$/, "");
+  }
+}
+
+type AzureAttemptResult = {
+  response: Response | null;
+  errors: string[];
+};
+
+async function postAzureChatWithFallback(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  requestBody: Record<string, unknown>
+): Promise<AzureAttemptResult> {
+  const baseUrl = normaliseEndpoint(endpoint);
+  const encodedModel = encodeURIComponent(model);
+
+  const attempts: Array<{ url: string; body: Record<string, unknown> }> = [
+    {
+      url: `${baseUrl}/openai/v1/chat/completions`,
+      body: requestBody,
+    },
+    {
+      url: `${baseUrl}/openai/deployments/${encodedModel}/chat/completions?api-version=2024-10-21`,
+      body: {
+        ...requestBody,
+        model: undefined,
+      },
+    },
+    {
+      url: `${baseUrl}/openai/deployments/${encodedModel}/chat/completions?api-version=2024-06-01`,
+      body: {
+        ...requestBody,
+        model: undefined,
+      },
+    },
+    {
+      url: `${baseUrl}/chat/completions?api-version=2024-05-01-preview`,
+      body: requestBody,
+    },
+  ];
+
+  const errors: string[] = [];
+
+  for (const attempt of attempts) {
+    const body = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(attempt.body).filter(([, value]) => value !== undefined)
+      )
+    );
+
+    const response = await fetch(attempt.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body,
+    });
+
+    if (response.ok) {
+      return { response, errors };
+    }
+
+    const errorText = await response.text().catch(() => "");
+    errors.push(`${attempt.url} -> ${response.status} ${errorText}`);
+  }
+
+  return { response: null, errors };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -264,27 +343,39 @@ ${userInstructions}`;
     };
 
     const isAzureFoundry = provider === "azure-foundry";
-    const targetUrl = isAzureFoundry
-      ? `${String(endpoint).trim().replace(/\/+$/, "")}/chat/completions?api-version=2024-05-01-preview`
-      : "https://openrouter.ai/api/v1/chat/completions";
+    let response: Response;
 
-    const targetHeaders: Record<string, string> = isAzureFoundry
-      ? {
-          "Content-Type": "application/json",
-          "api-key": apiKey,
-        }
-      : {
+    if (isAzureFoundry) {
+      const result = await postAzureChatWithFallback(String(endpoint || ""), apiKey, model, requestBody);
+      if (!result.response) {
+        console.error("AI provider API error:", {
+          provider,
+          error: result.errors.join(" | "),
+        });
+
+        return NextResponse.json(
+          {
+            error: "AI request failed",
+            message: "Deployment not found. You must deploy the base model in Azure Foundry first.",
+            details: result.errors,
+          },
+          { status: 400 }
+        );
+      }
+
+      response = result.response;
+    } else {
+      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`,
           "HTTP-Referer": "https://vault.app",
           "X-Title": "Vault",
-        };
-
-    const response = await fetch(targetUrl, {
-      method: "POST",
-      headers: targetHeaders,
-      body: JSON.stringify(requestBody),
-    });
+        },
+        body: JSON.stringify(requestBody),
+      });
+    }
 
     if (!response.ok) {
       const error = await response.text();

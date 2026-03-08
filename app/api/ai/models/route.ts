@@ -152,7 +152,84 @@ function transformAzureFoundryModel(model: AzureFoundryModel): TransformedModel 
 }
 
 function normaliseEndpoint(endpoint: string): string {
-  return endpoint.trim().replace(/\/+$/, "");
+  const raw = endpoint.trim();
+  if (!raw) return "";
+
+  try {
+    const parsed = new URL(raw);
+    return parsed.origin.replace(/\/+$/, "");
+  } catch {
+    return raw.replace(/\/+$/, "");
+  }
+}
+
+function extractAzureModelsPayload(payload: unknown): AzureFoundryModel[] {
+  if (Array.isArray(payload)) {
+    return payload as AzureFoundryModel[];
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const objectPayload = payload as Record<string, unknown>;
+  const candidates = ["data", "models", "value", "items", "results"];
+
+  for (const key of candidates) {
+    const candidate = objectPayload[key];
+    if (Array.isArray(candidate)) {
+      return candidate
+        .map((entry) => {
+          if (typeof entry === "string") {
+            return { id: entry, name: entry } satisfies AzureFoundryModel;
+          }
+          return entry as AzureFoundryModel;
+        })
+        .filter(Boolean);
+    }
+  }
+
+  if (typeof objectPayload.id === "string" || typeof objectPayload.name === "string") {
+    return [objectPayload as unknown as AzureFoundryModel];
+  }
+
+  return [];
+}
+
+async function fetchAzureModelsWithFallback(baseUrl: string, apiKey: string): Promise<AzureFoundryModel[]> {
+  const endpoints = [
+    `${baseUrl}/openai/v1/models`,
+    `${baseUrl}/openai/v1/models?api-version=preview`,
+    `${baseUrl}/openai/models?api-version=2025-04-01-preview`,
+    `${baseUrl}/openai/models?api-version=2024-10-21`,
+    `${baseUrl}/models?api-version=2024-05-01-preview`,
+  ];
+
+  const failures: string[] = [];
+
+  for (const url of endpoints) {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      failures.push(`${url} -> ${response.status}`);
+      continue;
+    }
+
+    const data = await response.json().catch(() => null);
+    const models = extractAzureModelsPayload(data);
+    if (models.length > 0) {
+      return models;
+    }
+
+    failures.push(`${url} -> empty payload`);
+  }
+
+  throw new Error(`No Azure model listing endpoint returned models. Tried: ${failures.join("; ")}`);
 }
 
 export async function GET(request: NextRequest) {
@@ -174,26 +251,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const baseUrl = normaliseEndpoint(endpoint);
-      const response = await fetch(`${baseUrl}/models?api-version=2024-05-01-preview`, {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": apiKey,
-        },
-      });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(`Azure Foundry models API error: ${response.status} ${body}`);
-      }
-
-      const data = await response.json();
-      const sourceModels: AzureFoundryModel[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.models)
-            ? data.models
-            : [];
+      const sourceModels = await fetchAzureModelsWithFallback(baseUrl, apiKey);
 
       const filtered = filterAzureFoundryModels(sourceModels, search);
       const transformed = filtered.map(transformAzureFoundryModel);

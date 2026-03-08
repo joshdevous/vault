@@ -32,6 +32,7 @@ interface AIViewProps {
 // Storage keys
 const OPENROUTER_API_KEY_STORAGE_KEY = "vault-openrouter-api-key";
 const LEGACY_OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
+const AI_PROVIDER_STORAGE_KEY = "vault-ai-provider";
 const AZURE_FOUNDRY_API_KEY_STORAGE_KEY = "vault-azure-foundry-api-key";
 const AZURE_FOUNDRY_ENDPOINT_STORAGE_KEY = "vault-azure-foundry-endpoint";
 const SELECTED_MODEL_STORAGE_KEY = "vault-ai-model";
@@ -155,9 +156,48 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
   const messages = useMemo(() => currentSession?.messages || [], [currentSession?.messages]);
 
   const getProviderConfig = (): ProviderConfig | null => {
+    const aiProvider = localStorage.getItem(AI_PROVIDER_STORAGE_KEY);
     const openRouterApiKey = localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || localStorage.getItem(LEGACY_OPENROUTER_API_KEY_STORAGE_KEY) || "";
     const azureFoundryApiKey = localStorage.getItem(AZURE_FOUNDRY_API_KEY_STORAGE_KEY) || "";
     const azureFoundryEndpoint = localStorage.getItem(AZURE_FOUNDRY_ENDPOINT_STORAGE_KEY) || "";
+
+    if (aiProvider === "azure-foundry") {
+      if (azureFoundryApiKey && azureFoundryEndpoint) {
+        return {
+          provider: "azure-foundry",
+          apiKey: azureFoundryApiKey,
+          endpoint: azureFoundryEndpoint,
+        };
+      }
+
+      if (openRouterApiKey) {
+        return {
+          provider: "openrouter",
+          apiKey: openRouterApiKey,
+        };
+      }
+
+      return null;
+    }
+
+    if (aiProvider === "openrouter") {
+      if (openRouterApiKey) {
+        return {
+          provider: "openrouter",
+          apiKey: openRouterApiKey,
+        };
+      }
+
+      if (azureFoundryApiKey && azureFoundryEndpoint) {
+        return {
+          provider: "azure-foundry",
+          apiKey: azureFoundryApiKey,
+          endpoint: azureFoundryEndpoint,
+        };
+      }
+
+      return null;
+    }
 
     if (azureFoundryApiKey && azureFoundryEndpoint) {
       return {
@@ -198,9 +238,33 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
 
       const res = await fetch(`/api/ai/models?${params.toString()}`, { headers });
       const data = await res.json();
-      const models = Array.isArray(data.models) ? data.models : [];
+
+      if (!res.ok) {
+        const message = typeof data?.message === "string"
+          ? data.message
+          : typeof data?.error === "string"
+            ? data.error
+            : "Failed to load models for the active provider.";
+        setAvailableModels([]);
+        setModelsError(message);
+        return;
+      }
+
+      const rawModels = Array.isArray(data.models) ? data.models : [];
+      const models = rawModels.filter((model, index, all) => {
+        return all.findIndex((candidate) => candidate.id === model.id) === index;
+      });
+
       setAvailableModels(models);
-      setModelsError(models.length === 0 ? "No models returned for the active provider." : null);
+      if (models.length === 0) {
+        setModelsError(
+          providerConfig.provider === "azure-foundry"
+            ? "No models were returned. Check your Foundry endpoint format and key permissions."
+            : "No models returned for the active provider."
+        );
+      } else {
+        setModelsError(null);
+      }
     } catch (err) {
       console.error("Failed to fetch models:", err);
       setAvailableModels([]);
@@ -768,6 +832,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
             apiKey: providerConfig.apiKey,
             provider: providerConfig.provider,
             endpoint: providerConfig.endpoint,
+            model: selectedModel.id,
           }),
         }).then(() => loadSessions()).catch(() => {});
       } else {

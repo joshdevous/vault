@@ -34,6 +34,7 @@ import { Note } from "@/types/models";
 // Storage keys
 const OPENROUTER_API_KEY_STORAGE_KEY = "vault-openrouter-api-key";
 const LEGACY_OPENROUTER_API_KEY_STORAGE_KEY = "mothership-openrouter-api-key";
+const AI_PROVIDER_STORAGE_KEY = "vault-ai-provider";
 const AZURE_FOUNDRY_API_KEY_STORAGE_KEY = "vault-azure-foundry-api-key";
 const AZURE_FOUNDRY_ENDPOINT_STORAGE_KEY = "vault-azure-foundry-endpoint";
 const THEME_MODE_EVENT = "vault-theme-updated";
@@ -2389,9 +2390,50 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
 
   // Send chat message with note as context
   const getProviderConfig = () => {
+    const aiProvider = localStorage.getItem(AI_PROVIDER_STORAGE_KEY);
     const openRouterApiKey = localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || localStorage.getItem(LEGACY_OPENROUTER_API_KEY_STORAGE_KEY) || "";
     const azureFoundryApiKey = localStorage.getItem(AZURE_FOUNDRY_API_KEY_STORAGE_KEY) || "";
     const azureFoundryEndpoint = localStorage.getItem(AZURE_FOUNDRY_ENDPOINT_STORAGE_KEY) || "";
+
+    if (aiProvider === "azure-foundry") {
+      if (azureFoundryApiKey && azureFoundryEndpoint) {
+        return {
+          provider: "azure-foundry" as const,
+          apiKey: azureFoundryApiKey,
+          endpoint: azureFoundryEndpoint,
+        };
+      }
+
+      if (openRouterApiKey) {
+        return {
+          provider: "openrouter" as const,
+          apiKey: openRouterApiKey,
+          endpoint: undefined,
+        };
+      }
+
+      return null;
+    }
+
+    if (aiProvider === "openrouter") {
+      if (openRouterApiKey) {
+        return {
+          provider: "openrouter" as const,
+          apiKey: openRouterApiKey,
+          endpoint: undefined,
+        };
+      }
+
+      if (azureFoundryApiKey && azureFoundryEndpoint) {
+        return {
+          provider: "azure-foundry" as const,
+          apiKey: azureFoundryApiKey,
+          endpoint: azureFoundryEndpoint,
+        };
+      }
+
+      return null;
+    }
 
     if (azureFoundryApiKey && azureFoundryEndpoint) {
       return {

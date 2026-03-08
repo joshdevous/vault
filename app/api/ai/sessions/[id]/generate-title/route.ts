@@ -1,6 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function normaliseEndpoint(endpoint: string): string {
+  const raw = endpoint.trim();
+  if (!raw) return "";
+
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw.replace(/\/+$/, "");
+  }
+}
+
+async function postAzureTitleWithFallback(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  body: Record<string, unknown>
+): Promise<Response | null> {
+  const baseUrl = normaliseEndpoint(endpoint);
+  const encodedModel = encodeURIComponent(model);
+
+  const attempts: Array<{ url: string; payload: Record<string, unknown> }> = [
+    { url: `${baseUrl}/openai/v1/chat/completions`, payload: body },
+    {
+      url: `${baseUrl}/openai/deployments/${encodedModel}/chat/completions?api-version=2024-10-21`,
+      payload: { ...body, model: undefined },
+    },
+    {
+      url: `${baseUrl}/openai/deployments/${encodedModel}/chat/completions?api-version=2024-06-01`,
+      payload: { ...body, model: undefined },
+    },
+    { url: `${baseUrl}/chat/completions?api-version=2024-05-01-preview`, payload: body },
+  ];
+
+  for (const attempt of attempts) {
+    const payload = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(attempt.payload).filter(([, value]) => value !== undefined)
+      )
+    );
+
+    const response = await fetch(attempt.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: payload,
+    });
+
+    if (response.ok) {
+      return response;
+    }
+  }
+
+  return null;
+}
+
 // POST /api/ai/sessions/[id]/generate-title - Generate title using AI
 export async function POST(
   request: NextRequest,
@@ -43,33 +100,28 @@ export async function POST(
 ${conversationSnippet}`;
 
     const isAzureFoundry = provider === "azure-foundry";
-    const targetUrl = isAzureFoundry
-      ? `${String(endpoint).trim().replace(/\/+$/, "")}/chat/completions?api-version=2024-05-01-preview`
-      : "https://openrouter.ai/api/v1/chat/completions";
+    const model = isAzureFoundry ? "gpt-4o-mini" : "openai/gpt-4o-mini";
 
-    const targetHeaders: Record<string, string> = isAzureFoundry
-      ? {
-          "Content-Type": "application/json",
-          "api-key": apiKey,
-        }
-      : {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": "https://vault.app",
-          "X-Title": "Vault",
-        };
+    const titleRequestBody = {
+      model,
+      messages: [{ role: "user", content: titlePrompt }],
+      max_tokens: 20,
+    };
 
-    const response = await fetch(targetUrl, {
-      method: "POST",
-      headers: targetHeaders,
-      body: JSON.stringify({
-        model: isAzureFoundry ? "gpt-4o-mini" : "openai/gpt-4o-mini",
-        messages: [{ role: "user", content: titlePrompt }],
-        max_tokens: 20,
-      }),
-    });
+    const response = isAzureFoundry
+      ? await postAzureTitleWithFallback(String(endpoint || ""), apiKey, model, titleRequestBody)
+      : await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://vault.app",
+            "X-Title": "Vault",
+          },
+          body: JSON.stringify(titleRequestBody),
+        });
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
       throw new Error(`${provider} API error`);
     }
 

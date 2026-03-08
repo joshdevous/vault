@@ -1246,6 +1246,98 @@ async function getOpenRouterApiKeyFromMainWindow() {
   }
 }
 
+async function getAiProviderConfigFromMainWindow() {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return null;
+    }
+
+    const result = await mainWindow.webContents.executeJavaScript(
+      `(() => ({
+        provider: localStorage.getItem('vault-ai-provider') || '',
+        openRouterApiKey: localStorage.getItem('vault-openrouter-api-key') || localStorage.getItem('mothership-openrouter-api-key') || '',
+        azureFoundryApiKey: localStorage.getItem('vault-azure-foundry-api-key') || '',
+        azureFoundryEndpoint: localStorage.getItem('vault-azure-foundry-endpoint') || ''
+      }))()`,
+      true
+    );
+
+    const preferredProvider = result?.provider === "azure-foundry" || result?.provider === "openrouter"
+      ? result.provider
+      : null;
+
+    const openRouterApiKey = typeof result?.openRouterApiKey === "string" ? result.openRouterApiKey : "";
+    const azureFoundryApiKey = typeof result?.azureFoundryApiKey === "string" ? result.azureFoundryApiKey : "";
+    const azureFoundryEndpoint = typeof result?.azureFoundryEndpoint === "string" ? result.azureFoundryEndpoint : "";
+
+    if (preferredProvider === "azure-foundry") {
+      if (azureFoundryApiKey && azureFoundryEndpoint) {
+        return {
+          provider: "azure-foundry",
+          apiKey: azureFoundryApiKey,
+          endpoint: azureFoundryEndpoint,
+          model: "gpt-4o-mini",
+        };
+      }
+
+      if (openRouterApiKey) {
+        return {
+          provider: "openrouter",
+          apiKey: openRouterApiKey,
+          endpoint: undefined,
+          model: "openai/gpt-4o-mini",
+        };
+      }
+
+      return null;
+    }
+
+    if (preferredProvider === "openrouter") {
+      if (openRouterApiKey) {
+        return {
+          provider: "openrouter",
+          apiKey: openRouterApiKey,
+          endpoint: undefined,
+          model: "openai/gpt-4o-mini",
+        };
+      }
+
+      if (azureFoundryApiKey && azureFoundryEndpoint) {
+        return {
+          provider: "azure-foundry",
+          apiKey: azureFoundryApiKey,
+          endpoint: azureFoundryEndpoint,
+          model: "gpt-4o-mini",
+        };
+      }
+
+      return null;
+    }
+
+    if (azureFoundryApiKey && azureFoundryEndpoint) {
+      return {
+        provider: "azure-foundry",
+        apiKey: azureFoundryApiKey,
+        endpoint: azureFoundryEndpoint,
+        model: "gpt-4o-mini",
+      };
+    }
+
+    if (openRouterApiKey) {
+      return {
+        provider: "openrouter",
+        apiKey: openRouterApiKey,
+        endpoint: undefined,
+        model: "openai/gpt-4o-mini",
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function getTeamsCallTranscriptionEnabledFromMainWindow() {
   try {
     if (!mainWindow || mainWindow.isDestroyed()) {
@@ -1793,12 +1885,11 @@ ipcMain.handle("quick-ai-chat", async (_event, payload) => {
     throw new Error("No messages provided");
   }
 
-  const apiKey = await getOpenRouterApiKeyFromMainWindow();
-  if (!apiKey) {
-    throw new Error("Please set your OpenRouter API key in Settings > API Keys.");
+  const providerConfig = await getAiProviderConfigFromMainWindow();
+  if (!providerConfig) {
+    throw new Error("Please configure OpenRouter or Azure Foundry in Settings > API Keys.");
   }
 
-  const model = await getSelectedModelFromMainWindow();
   const instructions = await getAiInstructions();
 
   const response = await fetch(`http://localhost:${PORT}/api/ai/chat`, {
@@ -1808,8 +1899,10 @@ ipcMain.handle("quick-ai-chat", async (_event, payload) => {
     },
     body: JSON.stringify({
       messages,
-      apiKey,
-      model,
+      apiKey: providerConfig.apiKey,
+      provider: providerConfig.provider,
+      endpoint: providerConfig.endpoint,
+      model: providerConfig.model,
       instructions,
     }),
   });
@@ -1853,12 +1946,11 @@ ipcMain.on("quick-ai-chat-stream", async (event, payload) => {
   }
 
   try {
-    const apiKey = await getOpenRouterApiKeyFromMainWindow();
-    if (!apiKey) {
-      throw new Error("Please set your OpenRouter API key in Settings > API Keys.");
+    const providerConfig = await getAiProviderConfigFromMainWindow();
+    if (!providerConfig) {
+      throw new Error("Please configure OpenRouter or Azure Foundry in Settings > API Keys.");
     }
 
-    const model = await getSelectedModelFromMainWindow();
     const instructions = await getAiInstructions();
     const response = await fetch(`http://localhost:${PORT}/api/ai/chat`, {
       method: "POST",
@@ -1867,8 +1959,10 @@ ipcMain.on("quick-ai-chat-stream", async (event, payload) => {
       },
       body: JSON.stringify({
         messages,
-        apiKey,
-        model,
+        apiKey: providerConfig.apiKey,
+        provider: providerConfig.provider,
+        endpoint: providerConfig.endpoint,
+        model: providerConfig.model,
         instructions,
       }),
     });
