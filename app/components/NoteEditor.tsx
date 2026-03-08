@@ -587,6 +587,13 @@ const NoteImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      inlineIcon: {
+        default: false,
+        parseHTML: (element: HTMLElement) => element.getAttribute("data-inline-icon") === "true",
+        renderHTML: (attributes: { inlineIcon?: unknown }) => {
+          return attributes.inlineIcon ? { "data-inline-icon": "true" } : {};
+        },
+      },
       width: {
         default: null,
         parseHTML: (element: HTMLElement) => {
@@ -710,11 +717,83 @@ type SaveOptions = {
 };
 
 type SlashCommand = {
-  id: "table" | "icon";
+  id: "table" | "emoji" | "icon";
   label: string;
   description: string;
   keywords: string[];
 };
+
+type EmojiInsertOption = {
+  emoji: string;
+  name: string;
+  keywords: string[];
+};
+
+type InlineInsertPickerState = {
+  mode: "emoji" | "icon";
+  query: string;
+  left: number;
+  top: number;
+};
+
+const EMOJI_INSERT_OPTIONS: EmojiInsertOption[] = [
+  { emoji: "😀", name: "grinning face", keywords: ["happy", "smile"] },
+  { emoji: "😂", name: "face with tears of joy", keywords: ["lol", "laugh"] },
+  { emoji: "🙂", name: "slightly smiling face", keywords: ["smile", "friendly"] },
+  { emoji: "😊", name: "smiling face with smiling eyes", keywords: ["happy", "warm"] },
+  { emoji: "😉", name: "winking face", keywords: ["wink"] },
+  { emoji: "😍", name: "smiling face with heart eyes", keywords: ["love", "heart"] },
+  { emoji: "🤔", name: "thinking face", keywords: ["think", "hmm"] },
+  { emoji: "😎", name: "smiling face with sunglasses", keywords: ["cool"] },
+  { emoji: "😭", name: "loudly crying face", keywords: ["sad", "cry"] },
+  { emoji: "😴", name: "sleeping face", keywords: ["sleep", "tired"] },
+  { emoji: "🔥", name: "fire", keywords: ["hot", "lit"] },
+  { emoji: "✨", name: "sparkles", keywords: ["magic", "shine"] },
+  { emoji: "⭐", name: "star", keywords: ["favorite"] },
+  { emoji: "✅", name: "check mark", keywords: ["done", "task"] },
+  { emoji: "❌", name: "cross mark", keywords: ["no", "fail"] },
+  { emoji: "⚠️", name: "warning", keywords: ["alert", "caution"] },
+  { emoji: "💡", name: "light bulb", keywords: ["idea", "brainstorm"] },
+  { emoji: "📌", name: "pushpin", keywords: ["pin", "important"] },
+  { emoji: "📎", name: "paperclip", keywords: ["attachment"] },
+  { emoji: "📝", name: "memo", keywords: ["note", "write"] },
+  { emoji: "📄", name: "page", keywords: ["document", "file"] },
+  { emoji: "📁", name: "folder", keywords: ["directory"] },
+  { emoji: "🗂️", name: "card index dividers", keywords: ["organize", "folder"] },
+  { emoji: "📚", name: "books", keywords: ["read", "library"] },
+  { emoji: "📅", name: "calendar", keywords: ["date", "schedule"] },
+  { emoji: "🗓️", name: "spiral calendar", keywords: ["calendar", "plan"] },
+  { emoji: "⏰", name: "alarm clock", keywords: ["time", "reminder"] },
+  { emoji: "🎯", name: "direct hit", keywords: ["goal", "target"] },
+  { emoji: "🚀", name: "rocket", keywords: ["launch", "ship"] },
+  { emoji: "🧠", name: "brain", keywords: ["thinking", "smart"] },
+  { emoji: "💬", name: "speech balloon", keywords: ["chat", "message"] },
+  { emoji: "📢", name: "loudspeaker", keywords: ["announce", "alert"] },
+  { emoji: "📷", name: "camera", keywords: ["photo", "image"] },
+  { emoji: "🖼️", name: "framed picture", keywords: ["image", "art"] },
+  { emoji: "🎨", name: "artist palette", keywords: ["design", "art"] },
+  { emoji: "🎵", name: "musical note", keywords: ["music", "audio"] },
+  { emoji: "🎬", name: "clapper board", keywords: ["video", "movie"] },
+  { emoji: "💻", name: "laptop", keywords: ["computer", "code"] },
+  { emoji: "📱", name: "mobile phone", keywords: ["phone", "device"] },
+  { emoji: "🔧", name: "wrench", keywords: ["tool", "fix"] },
+  { emoji: "🛠️", name: "hammer and wrench", keywords: ["build", "repair"] },
+  { emoji: "🔒", name: "locked", keywords: ["secure", "private"] },
+  { emoji: "🔓", name: "unlocked", keywords: ["open"] },
+  { emoji: "❤️", name: "red heart", keywords: ["love", "like"] },
+  { emoji: "👍", name: "thumbs up", keywords: ["yes", "approve"] },
+  { emoji: "👎", name: "thumbs down", keywords: ["no", "dislike"] },
+  { emoji: "🙏", name: "folded hands", keywords: ["thanks", "please"] },
+  { emoji: "👀", name: "eyes", keywords: ["look", "review"] },
+  { emoji: "🏠", name: "house", keywords: ["home"] },
+  { emoji: "🌍", name: "globe showing europe-africa", keywords: ["world", "global"] },
+  { emoji: "🌱", name: "seedling", keywords: ["growth", "new"] },
+  { emoji: "🍀", name: "four leaf clover", keywords: ["lucky"] },
+  { emoji: "☕", name: "hot beverage", keywords: ["coffee", "break"] },
+  { emoji: "🍕", name: "pizza", keywords: ["food"] },
+  { emoji: "🎉", name: "party popper", keywords: ["celebrate", "success"] },
+  { emoji: "🏆", name: "trophy", keywords: ["win", "achievement"] },
+];
 
 type SlashMenuState = {
   query: string;
@@ -844,6 +923,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const slashMenuStateRef = useRef<SlashMenuState | null>(null);
   const filteredSlashCommandsRef = useRef<SlashCommand[]>([]);
   const slashMenuSelectedIndexRef = useRef(0);
+  const [inlineInsertPickerState, setInlineInsertPickerState] = useState<InlineInsertPickerState | null>(null);
+  const [inlineInsertPickerSelectedIndex, setInlineInsertPickerSelectedIndex] = useState(0);
+  const inlineInsertPickerPositionRef = useRef<number | null>(null);
+  const inlineInsertPickerContainerRef = useRef<HTMLDivElement | null>(null);
+  const inlineInsertPickerInputRef = useRef<HTMLInputElement | null>(null);
 
   const isNearBottom = (element: HTMLDivElement) =>
     element.scrollHeight - element.scrollTop - element.clientHeight < 96;
@@ -880,13 +964,53 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         keywords: ["table", "grid", "columns"],
       },
       {
+        id: "emoji",
+        label: "Emoji",
+        description: "Insert an emoji inline",
+        keywords: ["emoji", "smile", "symbol"],
+      },
+      {
         id: "icon",
         label: "Icon",
-        description: "Set this note icon with an emoji",
-        keywords: ["icon", "emoji"],
+        description: "Insert an uploaded icon image inline",
+        keywords: ["icon", "image", "uploaded"],
       },
     ];
   }, []);
+
+  const [uploadedIcons, setUploadedIcons] = useState<string[]>([]);
+  const [isLoadingUploadedIcons, setIsLoadingUploadedIcons] = useState(false);
+
+  const filteredEmojiInsertOptions = useMemo(() => {
+    if (!inlineInsertPickerState || inlineInsertPickerState.mode !== "emoji") {
+      return [] as EmojiInsertOption[];
+    }
+
+    const query = inlineInsertPickerState.query.trim().toLowerCase();
+    if (!query) {
+      return EMOJI_INSERT_OPTIONS;
+    }
+
+    return EMOJI_INSERT_OPTIONS.filter((option) => {
+      if (option.emoji.includes(query) || option.name.includes(query)) {
+        return true;
+      }
+      return option.keywords.some((keyword) => keyword.includes(query));
+    });
+  }, [inlineInsertPickerState]);
+
+  const filteredUploadedIcons = useMemo(() => {
+    if (!inlineInsertPickerState || inlineInsertPickerState.mode !== "icon") {
+      return [] as string[];
+    }
+
+    const query = inlineInsertPickerState.query.trim().toLowerCase();
+    if (!query) {
+      return uploadedIcons;
+    }
+
+    return uploadedIcons.filter((filename) => filename.toLowerCase().includes(query));
+  }, [inlineInsertPickerState, uploadedIcons]);
 
   const filteredSlashCommands = useMemo(() => {
     if (!slashMenuState) {
@@ -918,6 +1042,91 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     slashMenuSelectedIndexRef.current = slashMenuSelectedIndex;
   }, [slashMenuSelectedIndex]);
 
+  const closeInlineInsertPicker = useCallback(() => {
+    setInlineInsertPickerState(null);
+    setInlineInsertPickerSelectedIndex(0);
+    inlineInsertPickerPositionRef.current = null;
+  }, []);
+
+  const openInlineInsertPicker = useCallback((
+    mode: "emoji" | "icon",
+    anchor: { left: number; top: number },
+    insertPos: number
+  ) => {
+    inlineInsertPickerPositionRef.current = insertPos;
+    setInlineInsertPickerState({
+      mode,
+      query: "",
+      left: anchor.left,
+      top: anchor.top,
+    });
+    setInlineInsertPickerSelectedIndex(0);
+    requestAnimationFrame(() => {
+      inlineInsertPickerInputRef.current?.focus();
+    });
+  }, []);
+
+  const insertEmojiFromPicker = useCallback((emoji: string) => {
+    const currentEditor = editorRef.current;
+    const insertPos = inlineInsertPickerPositionRef.current;
+    if (!currentEditor) {
+      closeInlineInsertPicker();
+      return;
+    }
+
+    const chain = currentEditor.chain().focus();
+    if (typeof insertPos === "number") {
+      chain.setTextSelection(insertPos);
+    }
+    chain.insertContent(`${emoji} `).run();
+
+    closeInlineInsertPicker();
+  }, [closeInlineInsertPicker]);
+
+  const insertUploadedIconFromPicker = useCallback((filename: string) => {
+    const currentEditor = editorRef.current;
+    const insertPos = inlineInsertPickerPositionRef.current;
+    if (!currentEditor) {
+      closeInlineInsertPicker();
+      return;
+    }
+
+    const chain = currentEditor.chain().focus();
+    if (typeof insertPos === "number") {
+      chain.setTextSelection(insertPos);
+    }
+
+    chain
+      .setImage({
+        src: `/api/icons/${filename}`,
+        alt: filename,
+        width: 22,
+        inlineIcon: true,
+      })
+      .insertContent(" ")
+      .run();
+
+    closeInlineInsertPicker();
+  }, [closeInlineInsertPicker]);
+
+  const loadUploadedIcons = useCallback(async () => {
+    setIsLoadingUploadedIcons(true);
+    try {
+      const response = await fetch("/api/icons");
+      if (!response.ok) {
+        setUploadedIcons([]);
+        return;
+      }
+
+      const data = await response.json();
+      setUploadedIcons(Array.isArray(data.icons) ? data.icons : []);
+    } catch {
+      setUploadedIcons([]);
+    } finally {
+      setIsLoadingUploadedIcons(false);
+    }
+  }, []);
+
   const runSlashCommand = useCallback(async (command: SlashCommand) => {
     const currentEditor = editorRef.current;
     const currentSlashMenuState = slashMenuStateRef.current;
@@ -931,6 +1140,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       .deleteRange({ from: currentSlashMenuState.from, to: currentSlashMenuState.to })
       .run();
 
+    const insertPos = currentEditor.state.selection.from;
+
     setSlashMenuState(null);
     setSlashMenuSelectedIndex(0);
 
@@ -943,32 +1154,15 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       return;
     }
 
-    if (command.id === "icon") {
-      const currentEmoji = note.icon.startsWith("icon:") || note.icon === "sheet" ? "" : note.icon;
-      const next = window.prompt("Set note emoji icon", currentEmoji || "");
-      if (!next) {
-        return;
-      }
-
-      const trimmed = next.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      const res = await fetch(`/api/notes/${note.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ icon: trimmed }),
-      });
-
-      if (!res.ok) {
-        return;
-      }
-
-      const updated = await res.json();
-      onUpdate(updated);
+    if (command.id === "emoji") {
+      openInlineInsertPicker("emoji", { left: currentSlashMenuState.left, top: currentSlashMenuState.top }, insertPos);
+      return;
     }
-  }, [note.icon, note.id, onUpdate]);
+
+    if (command.id === "icon") {
+      openInlineInsertPicker("icon", { left: currentSlashMenuState.left, top: currentSlashMenuState.top }, insertPos);
+    }
+  }, [openInlineInsertPicker]);
 
 
   const syncSlashMenu = useCallback((currentEditor: Editor | null) => {
@@ -1004,6 +1198,57 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       setSlashMenuSelectedIndex(filteredSlashCommands.length - 1);
     }
   }, [filteredSlashCommands.length, slashMenuSelectedIndex, slashMenuState]);
+
+  useEffect(() => {
+    if (!inlineInsertPickerState) {
+      return;
+    }
+
+    const optionsLength = inlineInsertPickerState.mode === "emoji"
+      ? filteredEmojiInsertOptions.length
+      : filteredUploadedIcons.length;
+
+    if (optionsLength === 0) {
+      setInlineInsertPickerSelectedIndex(0);
+      return;
+    }
+
+    if (inlineInsertPickerSelectedIndex >= optionsLength) {
+      setInlineInsertPickerSelectedIndex(optionsLength - 1);
+    }
+  }, [filteredEmojiInsertOptions.length, filteredUploadedIcons.length, inlineInsertPickerSelectedIndex, inlineInsertPickerState]);
+
+  useEffect(() => {
+    if (!inlineInsertPickerState || inlineInsertPickerState.mode !== "icon") {
+      return;
+    }
+
+    void loadUploadedIcons();
+  }, [inlineInsertPickerState, loadUploadedIcons]);
+
+  useEffect(() => {
+    if (!inlineInsertPickerState) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+
+      if (inlineInsertPickerContainerRef.current?.contains(target)) {
+        return;
+      }
+
+      closeInlineInsertPicker();
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [closeInlineInsertPicker, inlineInsertPickerState]);
 
   const queueSpreadsheetSave = useCallback((normalized: string[][]) => {
     if (isLocked) {
@@ -1652,6 +1897,54 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           return false;
         }
 
+        if (inlineInsertPickerState) {
+          const options = inlineInsertPickerState.mode === "emoji"
+            ? filteredEmojiInsertOptions
+            : filteredUploadedIcons;
+
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (options.length > 0) {
+              setInlineInsertPickerSelectedIndex((prev) => (prev + 1) % options.length);
+            }
+            return true;
+          }
+
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            if (options.length > 0) {
+              setInlineInsertPickerSelectedIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
+            }
+            return true;
+          }
+
+          if (event.key === "Enter") {
+            event.preventDefault();
+            if (options.length === 0) {
+              return true;
+            }
+
+            if (inlineInsertPickerState.mode === "emoji") {
+              const option = options[inlineInsertPickerSelectedIndex] as EmojiInsertOption | undefined;
+              if (option) {
+                insertEmojiFromPicker(option.emoji);
+              }
+            } else {
+              const filename = options[inlineInsertPickerSelectedIndex] as string | undefined;
+              if (filename) {
+                insertUploadedIconFromPicker(filename);
+              }
+            }
+            return true;
+          }
+
+          if (event.key === "Escape") {
+            event.preventDefault();
+            closeInlineInsertPicker();
+            return true;
+          }
+        }
+
         if (slashMenuStateRef.current) {
           if (event.key === "ArrowDown") {
             event.preventDefault();
@@ -1847,7 +2140,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           }
 
           const target = event.target as HTMLElement | null;
-          if (!(target instanceof HTMLImageElement) || !target.classList.contains("mothership-note-image")) {
+          if (
+            !(target instanceof HTMLImageElement) ||
+            !target.classList.contains("mothership-note-image") ||
+            target.getAttribute("data-inline-icon") === "true"
+          ) {
             return false;
           }
 
@@ -1931,7 +2228,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         });
       }, 500);
     },
-  }, [insertImageWithParagraph, isLocked, isSpreadsheetNote, note.content, note.id, runSlashCommand, syncSlashMenu]);
+  }, [closeInlineInsertPicker, filteredEmojiInsertOptions, filteredUploadedIcons, inlineInsertPickerSelectedIndex, inlineInsertPickerState, insertEmojiFromPicker, insertImageWithParagraph, insertUploadedIconFromPicker, isLocked, isSpreadsheetNote, note.content, note.id, runSlashCommand, syncSlashMenu]);
 
   useEffect(() => {
     if (!editor) {
@@ -1946,7 +2243,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   useEffect(() => {
     setSlashMenuState(null);
     setSlashMenuSelectedIndex(0);
-  }, [note.id, isSpreadsheetNote, isLocked, showCallNoteView]);
+    closeInlineInsertPicker();
+  }, [closeInlineInsertPicker, note.id, isSpreadsheetNote, isLocked, showCallNoteView]);
 
   // Update editor content when note changes, including external updates to same note
   useEffect(() => {
@@ -2527,6 +2825,144 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                         </button>
                       );
                     })}
+                  </div>
+                )}
+                {inlineInsertPickerState && (
+                  <div
+                    ref={inlineInsertPickerContainerRef}
+                    className="fixed z-[81] w-80 rounded-lg border border-[#3f3f3f] bg-[#252525] p-2 shadow-xl"
+                    style={{ left: inlineInsertPickerState.left, top: inlineInsertPickerState.top }}
+                  >
+                    <input
+                      ref={inlineInsertPickerInputRef}
+                      value={inlineInsertPickerState.query}
+                      onChange={(event) => {
+                        setInlineInsertPickerState((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                query: event.target.value,
+                              }
+                            : prev
+                        );
+                        setInlineInsertPickerSelectedIndex(0);
+                      }}
+                      onKeyDown={(event) => {
+                        const options = inlineInsertPickerState.mode === "emoji"
+                          ? filteredEmojiInsertOptions
+                          : filteredUploadedIcons;
+
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (options.length > 0) {
+                            setInlineInsertPickerSelectedIndex((prev) => (prev + 1) % options.length);
+                          }
+                          return;
+                        }
+
+                        if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (options.length > 0) {
+                            setInlineInsertPickerSelectedIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
+                          }
+                          return;
+                        }
+
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (options.length === 0) {
+                            return;
+                          }
+
+                          if (inlineInsertPickerState.mode === "emoji") {
+                            const option = options[inlineInsertPickerSelectedIndex] as EmojiInsertOption | undefined;
+                            if (option) {
+                              insertEmojiFromPicker(option.emoji);
+                            }
+                          } else {
+                            const filename = options[inlineInsertPickerSelectedIndex] as string | undefined;
+                            if (filename) {
+                              insertUploadedIconFromPicker(filename);
+                            }
+                          }
+                          return;
+                        }
+
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          closeInlineInsertPicker();
+                        }
+                      }}
+                      placeholder={inlineInsertPickerState.mode === "emoji" ? "Search emojis..." : "Search uploaded icons..."}
+                      className="mb-2 w-full rounded border border-[#3f3f3f] bg-[#1a1a1a] px-2 py-1.5 text-sm text-[#e3e3e3] outline-none"
+                    />
+
+                    {inlineInsertPickerState.mode === "emoji" ? (
+                      <div className="max-h-60 overflow-auto space-y-0.5">
+                        {filteredEmojiInsertOptions.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-[#7d7d7d]">No emojis found</div>
+                        ) : (
+                          filteredEmojiInsertOptions.map((option, index) => {
+                            const selected = index === inlineInsertPickerSelectedIndex;
+                            return (
+                              <button
+                                key={`${option.emoji}-${option.name}`}
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  insertEmojiFromPicker(option.emoji);
+                                }}
+                                className={`w-full rounded px-2 py-1.5 text-left transition-colors ${selected ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="text-lg leading-none"
+                                    style={{ fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif' }}
+                                  >
+                                    {option.emoji}
+                                  </span>
+                                  <span className={`text-sm ${selected ? "text-[#ebebeb]" : "text-[#d0d0d0]"}`}>{option.name}</span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-auto space-y-1">
+                        {isLoadingUploadedIcons ? (
+                          <div className="px-2 py-1.5 text-xs text-[#7d7d7d]">Loading icons...</div>
+                        ) : filteredUploadedIcons.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-[#7d7d7d]">No uploaded icons found</div>
+                        ) : (
+                          filteredUploadedIcons.map((filename, index) => {
+                            const selected = index === inlineInsertPickerSelectedIndex;
+                            return (
+                              <button
+                                key={filename}
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  insertUploadedIconFromPicker(filename);
+                                }}
+                                className={`w-full rounded px-2 py-1.5 text-left transition-colors ${selected ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"}`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <img
+                                    src={`/api/icons/${filename}`}
+                                    alt=""
+                                    className="w-5 h-5 rounded-sm object-cover shrink-0"
+                                  />
+                                  <span className={`text-xs truncate ${selected ? "text-[#ebebeb]" : "text-[#bcbcbc]"}`}>{filename}</span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

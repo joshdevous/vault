@@ -583,6 +583,15 @@ a {
   user-select: none;
 }
 
+.tiptap img.mothership-note-image[data-inline-icon="true"] {
+  display: inline-block;
+  margin: 0 0.12em;
+  border-radius: 4px;
+  vertical-align: text-bottom;
+  max-width: none;
+  cursor: default;
+}
+
 .tiptap img.mothership-note-image.ProseMirror-selectednode {
   outline: 2px solid #5b9bd5;
   outline-offset: 2px;
