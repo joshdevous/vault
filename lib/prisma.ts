@@ -7,12 +7,35 @@ const dbPath = getDatabasePath();
 const globalForDbInit = globalThis as unknown as {
   __mothershipDbInitialized?: boolean;
 };
+const shouldLogDbMigrations =
+  process.env.VAULT_DEBUG_DB_MIGRATIONS === "true" || process.env.NODE_ENV === "production";
+
+function logDbMigrationInfo(message: string, payload?: unknown) {
+  if (!shouldLogDbMigrations) {
+    return;
+  }
+
+  if (payload === undefined) {
+    console.info(message);
+    return;
+  }
+
+  console.info(message, payload);
+}
+
+function logDbMigrationWarn(message: string) {
+  if (!shouldLogDbMigrations) {
+    return;
+  }
+
+  console.warn(message);
+}
 
 // Initialize the database and create tables if they don't exist
 function initializeDatabase() {
   const db = new Database(dbPath);
 
-  console.info("[db-migrations] startup check", { dbPath });
+  logDbMigrationInfo("[db-migrations] startup check", { dbPath });
 
   const hasLegacyVaultItemTable = db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='VaultItem'")
@@ -22,13 +45,13 @@ function initializeDatabase() {
     .get() as { name: string } | undefined;
 
   if (hasLegacyVaultItemTable && !hasListItemTable) {
-    console.info("[db-migrations] renaming table VaultItem -> ListItem");
+    logDbMigrationInfo("[db-migrations] renaming table VaultItem -> ListItem");
     db.exec('ALTER TABLE "VaultItem" RENAME TO "ListItem";');
-    console.info("[db-migrations] table rename complete");
+    logDbMigrationInfo("[db-migrations] table rename complete");
   } else if (hasLegacyVaultItemTable && hasListItemTable) {
-    console.warn("[db-migrations] both VaultItem and ListItem tables found; skipping auto-rename");
+    logDbMigrationWarn("[db-migrations] both VaultItem and ListItem tables found; skipping auto-rename");
   } else {
-    console.info("[db-migrations] no table rename needed");
+    logDbMigrationInfo("[db-migrations] no table rename needed");
   }
 
   const noteColumns = db
@@ -36,9 +59,9 @@ function initializeDatabase() {
     .all() as Array<{ name: string }>;
   const hasNoteLockColumn = noteColumns.some((column) => column.name === "isLocked");
   if (noteColumns.length > 0 && !hasNoteLockColumn) {
-    console.info("[db-migrations] adding Note.isLocked column");
+    logDbMigrationInfo("[db-migrations] adding Note.isLocked column");
     db.exec('ALTER TABLE "Note" ADD COLUMN "isLocked" INTEGER NOT NULL DEFAULT 0;');
-    console.info("[db-migrations] Note.isLocked column added");
+    logDbMigrationInfo("[db-migrations] Note.isLocked column added");
   }
   
   // Create tables if they don't exist (for production where prisma db push hasn't run)

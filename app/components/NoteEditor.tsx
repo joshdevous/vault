@@ -1732,7 +1732,9 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
             clearTimeout(saveTimeoutRef.current);
           }
 
-          void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content);
+          void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content, {
+            skipParentUpdate: true,
+          });
           return true;
         }
 
@@ -1917,7 +1919,9 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
 
       // Set new timeout for auto-save (500ms debounce)
       saveTimeoutRef.current = setTimeout(() => {
-        void saveNoteRef.current(titleRef.current, html);
+        void saveNoteRef.current(titleRef.current, html, {
+          skipParentUpdate: true,
+        });
       }, 500);
     },
   }, [insertImageWithParagraph, isLocked, isSpreadsheetNote, note.content, note.id, runSlashCommand, syncSlashMenu]);
@@ -1986,7 +1990,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       const content = isSpreadsheetNote
         ? serializeSpreadsheetContent(spreadsheetData)
         : (editor?.getHTML() || note.content);
-      saveNote(newTitle, content);
+      saveNote(newTitle, content, { skipParentUpdate: true });
     }, 500);
   };
 
@@ -2312,7 +2316,9 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                       ? serializeSpreadsheetContent(spreadsheetData)
                       : (editor?.getHTML() || note.content);
 
-                    void saveNoteRef.current(titleRef.current, content);
+                    void saveNoteRef.current(titleRef.current, content, {
+                      skipParentUpdate: true,
+                    });
                     return;
                   }
 
