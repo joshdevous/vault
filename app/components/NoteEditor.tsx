@@ -924,7 +924,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const filteredSlashCommandsRef = useRef<SlashCommand[]>([]);
   const slashMenuSelectedIndexRef = useRef(0);
   const [inlineInsertPickerState, setInlineInsertPickerState] = useState<InlineInsertPickerState | null>(null);
-  const [inlineInsertPickerSelectedIndex, setInlineInsertPickerSelectedIndex] = useState(0);
+  const [inlineInsertPickerSelectedIndex, setInlineInsertPickerSelectedIndex] = useState(-1);
   const inlineInsertPickerPositionRef = useRef<number | null>(null);
   const inlineInsertPickerContainerRef = useRef<HTMLDivElement | null>(null);
   const inlineInsertPickerInputRef = useRef<HTMLInputElement | null>(null);
@@ -1053,7 +1053,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       mode: inlineInsertPickerModeRef.current,
     });
     setInlineInsertPickerState(null);
-    setInlineInsertPickerSelectedIndex(0);
+    setInlineInsertPickerSelectedIndex(-1);
     inlineInsertPickerPositionRef.current = null;
   }, [note.id]);
 
@@ -1075,10 +1075,14 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       left: anchor.left,
       top: anchor.top,
     });
-    setInlineInsertPickerSelectedIndex(0);
+    setInlineInsertPickerSelectedIndex(mode === "emoji" ? 0 : -1);
     if (mode === "emoji") {
       requestAnimationFrame(() => {
         inlineInsertPickerInputRef.current?.focus();
+      });
+    } else {
+      requestAnimationFrame(() => {
+        inlineInsertPickerContainerRef.current?.focus();
       });
     }
   }, [note.id]);
@@ -1150,7 +1154,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           attrs: {
             src: `/api/icons/${filename}`,
             alt: filename,
-            width: 22,
+            width: 18,
             inlineIcon: true,
           },
         },
@@ -1175,7 +1179,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         .setImage({
           src: `/api/icons/${filename}`,
           alt: filename,
-          width: 22,
+          width: 18,
           inlineIcon: true,
         })
         .insertContent(" ")
@@ -1322,6 +1326,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       : filteredUploadedIcons.length;
 
     if (optionsLength === 0) {
+      setInlineInsertPickerSelectedIndex(-1);
+      return;
+    }
+
+    if (inlineInsertPickerState.mode === "emoji" && inlineInsertPickerSelectedIndex < 0) {
       setInlineInsertPickerSelectedIndex(0);
       return;
     }
@@ -1992,7 +2001,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       TableHeader,
       TableCell,
       NoteImage.configure({
-        inline: false,
+        inline: true,
         HTMLAttributes: {
           class: "mothership-note-image",
         },
@@ -2895,7 +2904,77 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                 {inlineInsertPickerState && (
                   <div
                     ref={inlineInsertPickerContainerRef}
-                    className="fixed z-[81] w-80 rounded-lg border border-[#3f3f3f] bg-[#252525] p-2 shadow-xl"
+                    tabIndex={inlineInsertPickerState.mode === "icon" ? 0 : -1}
+                    onKeyDown={(event) => {
+                      if (inlineInsertPickerState.mode !== "icon") {
+                        return;
+                      }
+
+                      const options = filteredUploadedIcons;
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeInlineInsertPicker();
+                        return;
+                      }
+
+                      if (options.length === 0) {
+                        return;
+                      }
+
+                      const getCurrentIndex = () => (inlineInsertPickerSelectedIndex >= 0 ? inlineInsertPickerSelectedIndex : 0);
+                      const columns = 8;
+
+                      if (event.key === "ArrowRight") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setInlineInsertPickerSelectedIndex((prev) => {
+                          const current = prev >= 0 ? prev : 0;
+                          return Math.min(current + 1, options.length - 1);
+                        });
+                        return;
+                      }
+
+                      if (event.key === "ArrowLeft") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setInlineInsertPickerSelectedIndex((prev) => {
+                          const current = prev >= 0 ? prev : 0;
+                          return Math.max(current - 1, 0);
+                        });
+                        return;
+                      }
+
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setInlineInsertPickerSelectedIndex((prev) => {
+                          const current = prev >= 0 ? prev : 0;
+                          return Math.min(current + columns, options.length - 1);
+                        });
+                        return;
+                      }
+
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setInlineInsertPickerSelectedIndex((prev) => {
+                          const current = prev >= 0 ? prev : 0;
+                          return Math.max(current - columns, 0);
+                        });
+                        return;
+                      }
+
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const selectedFilename = options[getCurrentIndex()];
+                        if (selectedFilename) {
+                          insertUploadedIconFromPicker(selectedFilename);
+                        }
+                      }
+                    }}
+                    className="fixed z-[81] w-80 rounded-lg border border-[#3f3f3f] bg-[#252525] p-2 shadow-xl outline-none"
                     style={{ left: inlineInsertPickerState.left, top: inlineInsertPickerState.top }}
                   >
                     {inlineInsertPickerState.mode === "emoji" && (
@@ -3004,7 +3083,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                         ) : (
                           <div className="grid grid-cols-8 gap-1">
                             {filteredUploadedIcons.map((filename, index) => {
-                              const selected = index === inlineInsertPickerSelectedIndex;
+                              const selected = inlineInsertPickerSelectedIndex >= 0 && index === inlineInsertPickerSelectedIndex;
                               return (
                                 <button
                                   key={filename}
@@ -3017,7 +3096,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                                     });
                                     insertUploadedIconFromPicker(filename);
                                   }}
-                                  className={`w-8 h-8 flex items-center justify-center hover:bg-[#3f3f3f] rounded transition-colors overflow-hidden ${selected ? "ring-2 ring-[#7eb8f7]" : ""}`}
+                                  className={`w-8 h-8 flex items-center justify-center rounded transition-colors focus:outline-none ${selected ? "bg-[#3f3f3f] shadow-[inset_0_0_0_2px_#7eb8f7]" : "hover:bg-[#3f3f3f]"}`}
                                   title="Insert icon"
                                 >
                                   <img
