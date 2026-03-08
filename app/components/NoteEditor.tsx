@@ -1061,9 +1061,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       top: anchor.top,
     });
     setInlineInsertPickerSelectedIndex(0);
-    requestAnimationFrame(() => {
-      inlineInsertPickerInputRef.current?.focus();
-    });
+    if (mode === "emoji") {
+      requestAnimationFrame(() => {
+        inlineInsertPickerInputRef.current?.focus();
+      });
+    }
   }, []);
 
   const insertEmojiFromPicker = useCallback((emoji: string) => {
@@ -2833,73 +2835,66 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                     className="fixed z-[81] w-80 rounded-lg border border-[#3f3f3f] bg-[#252525] p-2 shadow-xl"
                     style={{ left: inlineInsertPickerState.left, top: inlineInsertPickerState.top }}
                   >
-                    <input
-                      ref={inlineInsertPickerInputRef}
-                      value={inlineInsertPickerState.query}
-                      onChange={(event) => {
-                        setInlineInsertPickerState((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                query: event.target.value,
-                              }
-                            : prev
-                        );
-                        setInlineInsertPickerSelectedIndex(0);
-                      }}
-                      onKeyDown={(event) => {
-                        const options = inlineInsertPickerState.mode === "emoji"
-                          ? filteredEmojiInsertOptions
-                          : filteredUploadedIcons;
+                    {inlineInsertPickerState.mode === "emoji" && (
+                      <input
+                        ref={inlineInsertPickerInputRef}
+                        value={inlineInsertPickerState.query}
+                        onChange={(event) => {
+                          setInlineInsertPickerState((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  query: event.target.value,
+                                }
+                              : prev
+                          );
+                          setInlineInsertPickerSelectedIndex(0);
+                        }}
+                        onKeyDown={(event) => {
+                          const options = filteredEmojiInsertOptions;
 
-                        if (event.key === "ArrowDown") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (options.length > 0) {
-                            setInlineInsertPickerSelectedIndex((prev) => (prev + 1) % options.length);
-                          }
-                          return;
-                        }
-
-                        if (event.key === "ArrowUp") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (options.length > 0) {
-                            setInlineInsertPickerSelectedIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
-                          }
-                          return;
-                        }
-
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (options.length === 0) {
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (options.length > 0) {
+                              setInlineInsertPickerSelectedIndex((prev) => (prev + 1) % options.length);
+                            }
                             return;
                           }
 
-                          if (inlineInsertPickerState.mode === "emoji") {
-                            const option = options[inlineInsertPickerSelectedIndex] as EmojiInsertOption | undefined;
+                          if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (options.length > 0) {
+                              setInlineInsertPickerSelectedIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
+                            }
+                            return;
+                          }
+
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (options.length === 0) {
+                              return;
+                            }
+
+                            const option = options[inlineInsertPickerSelectedIndex];
                             if (option) {
                               insertEmojiFromPicker(option.emoji);
                             }
-                          } else {
-                            const filename = options[inlineInsertPickerSelectedIndex] as string | undefined;
-                            if (filename) {
-                              insertUploadedIconFromPicker(filename);
-                            }
+                            return;
                           }
-                          return;
-                        }
 
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          closeInlineInsertPicker();
-                        }
-                      }}
-                      placeholder={inlineInsertPickerState.mode === "emoji" ? "Search emojis..." : "Search uploaded icons..."}
-                      className="mb-2 w-full rounded border border-[#3f3f3f] bg-[#1a1a1a] px-2 py-1.5 text-sm text-[#e3e3e3] outline-none"
-                    />
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            closeInlineInsertPicker();
+                          }
+                        }}
+                        placeholder="Search emojis..."
+                        className="mb-2 w-full rounded border border-[#3f3f3f] bg-[#1a1a1a] px-2 py-1.5 text-sm text-[#e3e3e3] outline-none"
+                      />
+                    )}
 
                     {inlineInsertPickerState.mode === "emoji" ? (
                       <div className="max-h-60 overflow-auto space-y-0.5">
@@ -2932,34 +2927,34 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                         )}
                       </div>
                     ) : (
-                      <div className="max-h-60 overflow-auto space-y-1">
+                      <div className="max-h-60 overflow-auto">
                         {isLoadingUploadedIcons ? (
                           <div className="px-2 py-1.5 text-xs text-[#7d7d7d]">Loading icons...</div>
                         ) : filteredUploadedIcons.length === 0 ? (
                           <div className="px-2 py-1.5 text-xs text-[#7d7d7d]">No uploaded icons found</div>
                         ) : (
-                          filteredUploadedIcons.map((filename, index) => {
-                            const selected = index === inlineInsertPickerSelectedIndex;
-                            return (
-                              <button
-                                key={filename}
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  insertUploadedIconFromPicker(filename);
-                                }}
-                                className={`w-full rounded px-2 py-1.5 text-left transition-colors ${selected ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"}`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
+                          <div className="grid grid-cols-8 gap-1">
+                            {filteredUploadedIcons.map((filename, index) => {
+                              const selected = index === inlineInsertPickerSelectedIndex;
+                              return (
+                                <button
+                                  key={filename}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    insertUploadedIconFromPicker(filename);
+                                  }}
+                                  className={`w-8 h-8 flex items-center justify-center hover:bg-[#3f3f3f] rounded transition-colors overflow-hidden ${selected ? "ring-2 ring-[#7eb8f7]" : ""}`}
+                                  title="Insert icon"
+                                >
                                   <img
                                     src={`/api/icons/${filename}`}
                                     alt=""
-                                    className="w-5 h-5 rounded-sm object-cover shrink-0"
+                                    className="w-7 h-7 rounded-sm object-cover"
                                   />
-                                  <span className={`text-xs truncate ${selected ? "text-[#ebebeb]" : "text-[#bcbcbc]"}`}>{filename}</span>
-                                </div>
-                              </button>
-                            );
-                          })
+                                </button>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     )}
