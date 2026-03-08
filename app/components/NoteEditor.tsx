@@ -724,6 +724,13 @@ type SlashMenuState = {
   top: number;
 };
 
+type TableHoverControls = {
+  rightButtonLeft: number;
+  rightButtonTop: number;
+  bottomButtonLeft: number;
+  bottomButtonTop: number;
+};
+
 function getSlashMenuState(editor: Editor): SlashMenuState | null {
   const { state, view } = editor;
   const { selection } = state;
@@ -844,6 +851,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const slashMenuStateRef = useRef<SlashMenuState | null>(null);
   const filteredSlashCommandsRef = useRef<SlashCommand[]>([]);
   const slashMenuSelectedIndexRef = useRef(0);
+  const [tableHoverControls, setTableHoverControls] = useState<TableHoverControls | null>(null);
+  const hoveredTableRef = useRef<HTMLTableElement | null>(null);
 
   const isNearBottom = (element: HTMLDivElement) =>
     element.scrollHeight - element.scrollTop - element.clientHeight < 96;
@@ -969,6 +978,62 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       onUpdate(updated);
     }
   }, [note.icon, note.id, onUpdate]);
+
+  const showTableHoverControls = useCallback((tableElement: HTMLTableElement) => {
+    const tableRect = tableElement.getBoundingClientRect();
+    if (tableRect.width <= 0 || tableRect.height <= 0) {
+      setTableHoverControls(null);
+      hoveredTableRef.current = null;
+      return;
+    }
+
+    hoveredTableRef.current = tableElement;
+    setTableHoverControls({
+      rightButtonLeft: tableRect.right + 6,
+      rightButtonTop: tableRect.top + tableRect.height / 2,
+      bottomButtonLeft: tableRect.left + tableRect.width / 2,
+      bottomButtonTop: tableRect.bottom + 6,
+    });
+  }, []);
+
+  const clearTableHoverControls = useCallback(() => {
+    hoveredTableRef.current = null;
+    setTableHoverControls(null);
+  }, []);
+
+  const addColumnFromHover = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const tableElement = hoveredTableRef.current;
+    if (!currentEditor || !tableElement) {
+      return;
+    }
+
+    const targetCell = tableElement.querySelector("tr:first-child th:last-child, tr:first-child td:last-child") as HTMLElement | null;
+    if (!targetCell) {
+      return;
+    }
+
+    const cellPos = currentEditor.view.posAtDOM(targetCell, 0);
+    currentEditor.chain().focus().setTextSelection(cellPos + 1).addColumnAfter().run();
+  }, []);
+
+  const addRowFromHover = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const tableElement = hoveredTableRef.current;
+    if (!currentEditor || !tableElement) {
+      return;
+    }
+
+    const rows = tableElement.querySelectorAll("tr");
+    const lastRow = rows[rows.length - 1] as HTMLTableRowElement | undefined;
+    const targetCell = lastRow?.querySelector("th:first-child, td:first-child") as HTMLElement | null;
+    if (!targetCell) {
+      return;
+    }
+
+    const cellPos = currentEditor.view.posAtDOM(targetCell, 0);
+    currentEditor.chain().focus().setTextSelection(cellPos + 1).addRowAfter().run();
+  }, []);
 
   const syncSlashMenu = useCallback((currentEditor: Editor | null) => {
     if (!currentEditor || isSpreadsheetNote || isLocked || showCallNoteView) {
@@ -1945,6 +2010,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   useEffect(() => {
     setSlashMenuState(null);
     setSlashMenuSelectedIndex(0);
+    clearTableHoverControls();
   }, [note.id, isSpreadsheetNote, isLocked, showCallNoteView]);
 
   // Update editor content when note changes, including external updates to same note
@@ -2495,7 +2561,66 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
               </div>
             ) : (
               <div className="relative flex-1">
-                <EditorContent editor={editor} className="flex-1" />
+                <EditorContent
+                  editor={editor}
+                  className="flex-1"
+                  onMouseMove={(event) => {
+                    const target = event.target as HTMLElement | null;
+                    if (!target) {
+                      clearTableHoverControls();
+                      return;
+                    }
+
+                    if (target.closest('[data-table-hover-controls="true"]')) {
+                      return;
+                    }
+
+                    const tableElement = target.closest("table") as HTMLTableElement | null;
+                    if (!tableElement || isLocked) {
+                      clearTableHoverControls();
+                      return;
+                    }
+
+                    showTableHoverControls(tableElement);
+                  }}
+                  onMouseLeave={() => {
+                    clearTableHoverControls();
+                  }}
+                />
+                {!isLocked && tableHoverControls && (
+                  <>
+                    <button
+                      data-table-hover-controls="true"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        addColumnFromHover();
+                      }}
+                      className="fixed z-[80] h-5 w-5 -translate-y-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
+                      style={{ left: tableHoverControls.rightButtonLeft, top: tableHoverControls.rightButtonTop }}
+                      title="Add column"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                    <button
+                      data-table-hover-controls="true"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        addRowFromHover();
+                      }}
+                      className="fixed z-[80] h-5 w-5 -translate-x-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
+                      style={{ left: tableHoverControls.bottomButtonLeft, top: tableHoverControls.bottomButtonTop }}
+                      title="Add row"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                  </>
+                )}
                 {slashMenuState && filteredSlashCommands.length > 0 && (
                   <div
                     className="fixed z-[80] w-80 rounded-lg border border-[#3f3f3f] bg-[#252525] p-1 shadow-xl"
