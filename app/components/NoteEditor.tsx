@@ -1043,16 +1043,26 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   }, [slashMenuSelectedIndex]);
 
   const closeInlineInsertPicker = useCallback(() => {
+    console.log("[slash-insert] picker:close", {
+      noteId: note.id,
+      mode: inlineInsertPickerState?.mode ?? null,
+    });
     setInlineInsertPickerState(null);
     setInlineInsertPickerSelectedIndex(0);
     inlineInsertPickerPositionRef.current = null;
-  }, []);
+  }, [inlineInsertPickerState?.mode, note.id]);
 
   const openInlineInsertPicker = useCallback((
     mode: "emoji" | "icon",
     anchor: { left: number; top: number },
     insertPos: number
   ) => {
+    console.log("[slash-insert] picker:open", {
+      noteId: note.id,
+      mode,
+      anchor,
+      insertPos,
+    });
     inlineInsertPickerPositionRef.current = insertPos;
     setInlineInsertPickerState({
       mode,
@@ -1066,12 +1076,13 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         inlineInsertPickerInputRef.current?.focus();
       });
     }
-  }, []);
+  }, [note.id]);
 
   const insertEmojiFromPicker = useCallback((emoji: string) => {
     const currentEditor = editorRef.current;
     const insertPos = inlineInsertPickerPositionRef.current;
     if (!currentEditor) {
+      console.warn("[slash-insert] emoji:missing-editor", { noteId: note.id, emoji, insertPos });
       closeInlineInsertPicker();
       return;
     }
@@ -1081,19 +1092,41 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     const docSize = currentEditor.state.doc.content.size;
     const targetPos = Math.max(1, Math.min(rawPos, docSize));
 
-    currentEditor
+    const inserted = currentEditor
       .chain()
       .focus()
       .insertContentAt(targetPos, `${emoji} `)
       .run();
 
+    if (!inserted) {
+      console.warn("[slash-insert] emoji:insert-failed-fallback", {
+        noteId: note.id,
+        emoji,
+        rawPos,
+        targetPos,
+        docSize,
+      });
+      currentEditor.chain().focus().insertContent(`${emoji} `).run();
+    }
+
+    console.log("[slash-insert] emoji:insert", {
+      noteId: note.id,
+      emoji,
+      inserted,
+      rawPos,
+      targetPos,
+      docSize,
+      selectionFrom: currentEditor.state.selection.from,
+    });
+
     closeInlineInsertPicker();
-  }, [closeInlineInsertPicker]);
+  }, [closeInlineInsertPicker, note.id]);
 
   const insertUploadedIconFromPicker = useCallback((filename: string) => {
     const currentEditor = editorRef.current;
     const insertPos = inlineInsertPickerPositionRef.current;
     if (!currentEditor) {
+      console.warn("[slash-insert] icon:missing-editor", { noteId: note.id, filename, insertPos });
       closeInlineInsertPicker();
       return;
     }
@@ -1103,7 +1136,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     const docSize = currentEditor.state.doc.content.size;
     const targetPos = Math.max(1, Math.min(rawPos, docSize));
 
-    currentEditor
+    const inserted = currentEditor
       .chain()
       .focus()
       .insertContentAt(targetPos, [
@@ -1123,51 +1156,109 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       ])
       .run();
 
+    if (!inserted) {
+      console.warn("[slash-insert] icon:insert-failed-fallback", {
+        noteId: note.id,
+        filename,
+        rawPos,
+        targetPos,
+        docSize,
+      });
+      currentEditor
+        .chain()
+        .focus()
+        .setImage({
+          src: `/api/icons/${filename}`,
+          alt: filename,
+          width: 22,
+          inlineIcon: true,
+        })
+        .insertContent(" ")
+        .run();
+    }
+
+    console.log("[slash-insert] icon:insert", {
+      noteId: note.id,
+      filename,
+      inserted,
+      rawPos,
+      targetPos,
+      docSize,
+      selectionFrom: currentEditor.state.selection.from,
+    });
+
     closeInlineInsertPicker();
-  }, [closeInlineInsertPicker]);
+  }, [closeInlineInsertPicker, note.id]);
 
   const loadUploadedIcons = useCallback(async () => {
     setIsLoadingUploadedIcons(true);
     try {
       const response = await fetch("/api/icons");
       if (!response.ok) {
+        console.warn("[slash-insert] icon:list-failed", { noteId: note.id, status: response.status });
         setUploadedIcons([]);
         return;
       }
 
       const data = await response.json();
+      console.log("[slash-insert] icon:list-success", {
+        noteId: note.id,
+        count: Array.isArray(data.icons) ? data.icons.length : 0,
+      });
       setUploadedIcons(Array.isArray(data.icons) ? data.icons : []);
     } catch {
+      console.warn("[slash-insert] icon:list-error", { noteId: note.id });
       setUploadedIcons([]);
     } finally {
       setIsLoadingUploadedIcons(false);
     }
-  }, []);
+  }, [note.id]);
 
   const runSlashCommand = useCallback(async (command: SlashCommand) => {
     const currentEditor = editorRef.current;
     const currentSlashMenuState = slashMenuStateRef.current;
     if (!currentEditor || !currentSlashMenuState) {
+      console.warn("[slash-insert] command:missing-context", {
+        noteId: note.id,
+        command: command.id,
+        hasEditor: Boolean(currentEditor),
+        hasMenuState: Boolean(currentSlashMenuState),
+      });
       return;
     }
 
-    currentEditor
+    console.log("[slash-insert] command:start", {
+      noteId: note.id,
+      command: command.id,
+      menuState: currentSlashMenuState,
+      selectionFrom: currentEditor.state.selection.from,
+    });
+
+    const removedSlash = currentEditor
       .chain()
       .focus()
       .deleteRange({ from: currentSlashMenuState.from, to: currentSlashMenuState.to })
       .run();
 
     const insertPos = currentEditor.state.selection.from;
+    console.log("[slash-insert] command:after-delete", {
+      noteId: note.id,
+      command: command.id,
+      removedSlash,
+      insertPos,
+      selectionFrom: currentEditor.state.selection.from,
+    });
 
     setSlashMenuState(null);
     setSlashMenuSelectedIndex(0);
 
     if (command.id === "table") {
-      currentEditor
+      const insertedTable = currentEditor
         .chain()
         .focus()
         .insertTable({ rows: 3, cols: 2, withHeaderRow: true })
         .run();
+      console.log("[slash-insert] table:insert", { noteId: note.id, insertedTable });
       return;
     }
 
@@ -2923,6 +3014,12 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                                 key={`${option.emoji}-${option.name}`}
                                 onMouseDown={(event) => {
                                   event.preventDefault();
+                                  console.log("[slash-insert] emoji:click", {
+                                    noteId: note.id,
+                                    emoji: option.emoji,
+                                    name: option.name,
+                                    index,
+                                  });
                                   insertEmojiFromPicker(option.emoji);
                                 }}
                                 className={`w-full rounded px-2 py-1.5 text-left transition-colors ${selected ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"}`}
@@ -2956,6 +3053,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                                   key={filename}
                                   onMouseDown={(event) => {
                                     event.preventDefault();
+                                    console.log("[slash-insert] icon:click", {
+                                      noteId: note.id,
+                                      filename,
+                                      index,
+                                    });
                                     insertUploadedIconFromPicker(filename);
                                   }}
                                   className={`w-8 h-8 flex items-center justify-center hover:bg-[#3f3f3f] rounded transition-colors overflow-hidden ${selected ? "ring-2 ring-[#7eb8f7]" : ""}`}
