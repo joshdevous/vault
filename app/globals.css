@@ -710,19 +710,32 @@ a {
 }
 
 .ProseMirror table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   width: 100%;
   margin: 0.75rem 0;
+  border: 1px solid #3f3f3f;
+  border-radius: 10px;
   overflow: hidden;
 }
 
 .ProseMirror th,
 .ProseMirror td {
-  border: 1px solid #3f3f3f;
-  padding: 0.45rem 0.55rem;
+  border-right: 1px solid #3f3f3f;
+  border-bottom: 1px solid #3f3f3f;
+  padding: 0.1rem 0.55rem;
+  line-height: 1.25;
   vertical-align: top;
   min-width: 1rem;
+}
+
+.ProseMirror tr > *:last-child {
+  border-right: 0;
+}
+
+.ProseMirror table tr:last-child > * {
+  border-bottom: 0;
 }
 
 .ProseMirror th {
@@ -732,6 +745,10 @@ a {
 
 :root[data-theme="light"] .ProseMirror th,
 :root[data-theme="light"] .ProseMirror td {
+  border-color: #cfcfc8;
+}
+
+:root[data-theme="light"] .ProseMirror table {
   border-color: #cfcfc8;
 }
 
