@@ -726,9 +726,17 @@ type SlashMenuState = {
 
 type TableHoverControls = {
   rightButtonLeft: number;
-  rightButtonTop: number;
-  bottomButtonLeft: number;
+  rightAddButtonTop: number;
+  rightRemoveButtonTop: number;
   bottomButtonTop: number;
+  bottomAddButtonLeft: number;
+  bottomRemoveButtonLeft: number;
+  menuButtonLeft: number;
+  menuButtonTop: number;
+  menuPanelLeft: number;
+  menuPanelTop: number;
+  centerLeft: number;
+  centerTop: number;
 };
 
 function getSlashMenuState(editor: Editor): SlashMenuState | null {
@@ -854,6 +862,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const [tableHoverControls, setTableHoverControls] = useState<TableHoverControls | null>(null);
   const hoveredTableRef = useRef<HTMLTableElement | null>(null);
   const tableHoverHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isTableActionsMenuOpen, setIsTableActionsMenuOpen] = useState(false);
 
   const isNearBottom = (element: HTMLDivElement) =>
     element.scrollHeight - element.scrollTop - element.clientHeight < 96;
@@ -994,11 +1003,21 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     }
 
     hoveredTableRef.current = tableElement;
+    const centerLeft = tableRect.left + tableRect.width / 2;
+    const centerTop = tableRect.top + tableRect.height / 2;
     setTableHoverControls({
       rightButtonLeft: tableRect.right + 6,
-      rightButtonTop: tableRect.top + tableRect.height / 2,
-      bottomButtonLeft: tableRect.left + tableRect.width / 2,
+      rightAddButtonTop: centerTop - 12,
+      rightRemoveButtonTop: centerTop + 12,
+      bottomAddButtonLeft: centerLeft - 12,
+      bottomRemoveButtonLeft: centerLeft + 12,
       bottomButtonTop: tableRect.bottom + 6,
+      menuButtonLeft: tableRect.left - 26,
+      menuButtonTop: tableRect.top - 4,
+      menuPanelLeft: tableRect.left - 26,
+      menuPanelTop: tableRect.top + 20,
+      centerLeft,
+      centerTop,
     });
   }, []);
 
@@ -1012,6 +1031,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const clearTableHoverControls = useCallback(() => {
     hoveredTableRef.current = null;
     setTableHoverControls(null);
+    setIsTableActionsMenuOpen(false);
   }, []);
 
   const scheduleTableHoverControlsHide = useCallback(() => {
@@ -1055,6 +1075,57 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     const cellPos = currentEditor.view.posAtDOM(targetCell, 0);
     currentEditor.chain().focus().setTextSelection(cellPos + 1).addRowAfter().run();
   }, []);
+
+  const removeColumnFromHover = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const tableElement = hoveredTableRef.current;
+    if (!currentEditor || !tableElement) {
+      return;
+    }
+
+    const targetCell = tableElement.querySelector("tr:first-child th:last-child, tr:first-child td:last-child") as HTMLElement | null;
+    if (!targetCell) {
+      return;
+    }
+
+    const cellPos = currentEditor.view.posAtDOM(targetCell, 0);
+    currentEditor.chain().focus().setTextSelection(cellPos + 1).deleteColumn().run();
+  }, []);
+
+  const removeRowFromHover = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const tableElement = hoveredTableRef.current;
+    if (!currentEditor || !tableElement) {
+      return;
+    }
+
+    const rows = tableElement.querySelectorAll("tr");
+    const lastRow = rows[rows.length - 1] as HTMLTableRowElement | undefined;
+    const targetCell = lastRow?.querySelector("th:first-child, td:first-child") as HTMLElement | null;
+    if (!targetCell) {
+      return;
+    }
+
+    const cellPos = currentEditor.view.posAtDOM(targetCell, 0);
+    currentEditor.chain().focus().setTextSelection(cellPos + 1).deleteRow().run();
+  }, []);
+
+  const deleteTableFromHover = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const tableElement = hoveredTableRef.current;
+    if (!currentEditor || !tableElement) {
+      return;
+    }
+
+    const targetCell = tableElement.querySelector("th, td") as HTMLElement | null;
+    if (!targetCell) {
+      return;
+    }
+
+    const cellPos = currentEditor.view.posAtDOM(targetCell, 0);
+    currentEditor.chain().focus().setTextSelection(cellPos + 1).deleteTable().run();
+    clearTableHoverControls();
+  }, [clearTableHoverControls]);
 
   const syncSlashMenu = useCallback((currentEditor: Editor | null) => {
     if (!currentEditor || isSpreadsheetNote || isLocked || showCallNoteView) {
@@ -2635,7 +2706,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                         addColumnFromHover();
                       }}
                       className="fixed z-[80] h-5 w-5 -translate-y-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
-                      style={{ left: tableHoverControls.rightButtonLeft, top: tableHoverControls.rightButtonTop }}
+                      style={{ left: tableHoverControls.rightButtonLeft, top: tableHoverControls.rightAddButtonTop }}
                       title="Add column"
                     >
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -2654,10 +2725,31 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                       onMouseDown={(event) => {
                         event.preventDefault();
                         cancelTableHoverControlsHide();
+                        removeColumnFromHover();
+                      }}
+                      className="fixed z-[80] h-5 w-5 -translate-y-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
+                      style={{ left: tableHoverControls.rightButtonLeft, top: tableHoverControls.rightRemoveButtonTop }}
+                      title="Remove column"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                    <button
+                      data-table-hover-controls="true"
+                      onMouseEnter={() => {
+                        cancelTableHoverControlsHide();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleTableHoverControlsHide();
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        cancelTableHoverControlsHide();
                         addRowFromHover();
                       }}
                       className="fixed z-[80] h-5 w-5 -translate-x-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
-                      style={{ left: tableHoverControls.bottomButtonLeft, top: tableHoverControls.bottomButtonTop }}
+                      style={{ left: tableHoverControls.bottomAddButtonLeft, top: tableHoverControls.bottomButtonTop }}
                       title="Add row"
                     >
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -2665,6 +2757,94 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                         <path d="M5 12h14" />
                       </svg>
                     </button>
+                    <button
+                      data-table-hover-controls="true"
+                      onMouseEnter={() => {
+                        cancelTableHoverControlsHide();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleTableHoverControlsHide();
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        cancelTableHoverControlsHide();
+                        removeRowFromHover();
+                      }}
+                      className="fixed z-[80] h-5 w-5 -translate-x-1/2 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
+                      style={{ left: tableHoverControls.bottomRemoveButtonLeft, top: tableHoverControls.bottomButtonTop }}
+                      title="Remove row"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                    <button
+                      data-table-hover-controls="true"
+                      onMouseEnter={() => {
+                        cancelTableHoverControlsHide();
+                      }}
+                      onMouseLeave={() => {
+                        scheduleTableHoverControlsHide();
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        cancelTableHoverControlsHide();
+                        setIsTableActionsMenuOpen((prev) => !prev);
+                      }}
+                      className="fixed z-[80] h-5 w-5 rounded-full border border-[#3f3f3f] bg-[#252525] text-[#9b9b9b] hover:text-[#ebebeb] hover:bg-[#3a3a3a] transition-colors flex items-center justify-center"
+                      style={{ left: tableHoverControls.menuButtonLeft, top: tableHoverControls.menuButtonTop }}
+                      title="Table actions"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="6" cy="12" r="1.6" />
+                        <circle cx="12" cy="12" r="1.6" />
+                        <circle cx="18" cy="12" r="1.6" />
+                      </svg>
+                    </button>
+                    {isTableActionsMenuOpen && (
+                      <div
+                        data-table-hover-controls="true"
+                        onMouseEnter={() => {
+                          cancelTableHoverControlsHide();
+                        }}
+                        onMouseLeave={() => {
+                          scheduleTableHoverControlsHide();
+                        }}
+                        className="fixed z-[85] min-w-[150px] rounded-md border border-[#3f3f3f] bg-[#252525] p-1 shadow-xl"
+                        style={{ left: tableHoverControls.menuPanelLeft, top: tableHoverControls.menuPanelTop }}
+                      >
+                        <button
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            removeRowFromHover();
+                            setIsTableActionsMenuOpen(false);
+                          }}
+                          className="w-full rounded px-2 py-1.5 text-left text-xs text-[#cfcfcf] hover:bg-[#2f2f2f]"
+                        >
+                          Delete row
+                        </button>
+                        <button
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            removeColumnFromHover();
+                            setIsTableActionsMenuOpen(false);
+                          }}
+                          className="w-full rounded px-2 py-1.5 text-left text-xs text-[#cfcfcf] hover:bg-[#2f2f2f]"
+                        >
+                          Delete column
+                        </button>
+                        <button
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            deleteTableFromHover();
+                            setIsTableActionsMenuOpen(false);
+                          }}
+                          className="w-full rounded px-2 py-1.5 text-left text-xs text-red-300 hover:bg-[#2f2f2f]"
+                        >
+                          Delete table
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
                 {slashMenuState && filteredSlashCommands.length > 0 && (
