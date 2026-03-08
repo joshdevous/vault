@@ -95,6 +95,12 @@ export function SettingsView() {
   const [azureSpeechKey, setAzureSpeechKey] = useState("");
   const [azureSpeechRegion, setAzureSpeechRegion] = useState("");
   const [azureSpeechLanguage, setAzureSpeechLanguage] = useState("en-US");
+  const [isTestingProvider, setIsTestingProvider] = useState(false);
+  const [providerHealthStatus, setProviderHealthStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [providerHealthMessage, setProviderHealthMessage] = useState("");
+  const [isTestingSpeech, setIsTestingSpeech] = useState(false);
+  const [speechHealthStatus, setSpeechHealthStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [speechHealthMessage, setSpeechHealthMessage] = useState("");
   const [appVersion, setAppVersion] = useState("-");
   const [hydrated, setHydrated] = useState(false);
 
@@ -262,6 +268,106 @@ export function SettingsView() {
       setOpenAtStartupEnabled(previous);
     } finally {
       setIsUpdatingOpenAtStartup(false);
+    }
+  };
+
+  const handleTestProviderConnection = async () => {
+    if (isTestingProvider) {
+      return;
+    }
+
+    const apiKey = aiProvider === "openrouter" ? openRouterApiKey.trim() : azureFoundryApiKey.trim();
+    const endpoint = aiProvider === "azure-foundry" ? azureFoundryEndpoint.trim() : "";
+
+    if (!apiKey) {
+      setProviderHealthStatus("error");
+      setProviderHealthMessage("Missing API key for selected provider.");
+      return;
+    }
+
+    if (aiProvider === "azure-foundry" && !endpoint) {
+      setProviderHealthStatus("error");
+      setProviderHealthMessage("Missing endpoint for Azure Foundry.");
+      return;
+    }
+
+    setIsTestingProvider(true);
+    setProviderHealthStatus("idle");
+    setProviderHealthMessage("");
+
+    try {
+      const response = await fetch("/api/ai/health", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: aiProvider,
+          apiKey,
+          endpoint,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({} as { error?: string }));
+
+      if (!response.ok) {
+        setProviderHealthStatus("error");
+        setProviderHealthMessage(typeof data?.error === "string" ? data.error : "Connection test failed.");
+        return;
+      }
+
+      setProviderHealthStatus("ok");
+      setProviderHealthMessage(
+        aiProvider === "azure-foundry"
+          ? "Azure Foundry connection looks good."
+          : "OpenRouter connection looks good."
+      );
+    } catch {
+      setProviderHealthStatus("error");
+      setProviderHealthMessage("Connection test failed. Please try again.");
+    } finally {
+      setIsTestingProvider(false);
+    }
+  };
+
+  const handleTestSpeechConnection = async () => {
+    if (isTestingSpeech) {
+      return;
+    }
+
+    const key = azureSpeechKey.trim();
+    const region = azureSpeechRegion.trim();
+
+    if (!key || !region) {
+      setSpeechHealthStatus("error");
+      setSpeechHealthMessage("Missing Azure Speech key or region.");
+      return;
+    }
+
+    setIsTestingSpeech(true);
+    setSpeechHealthStatus("idle");
+    setSpeechHealthMessage("");
+
+    try {
+      const response = await fetch("/api/speech/health", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, region }),
+      });
+
+      const data = await response.json().catch(() => ({} as { error?: string }));
+
+      if (!response.ok) {
+        setSpeechHealthStatus("error");
+        setSpeechHealthMessage(typeof data?.error === "string" ? data.error : "Speech connection test failed.");
+        return;
+      }
+
+      setSpeechHealthStatus("ok");
+      setSpeechHealthMessage("Azure Speech connection looks good.");
+    } catch {
+      setSpeechHealthStatus("error");
+      setSpeechHealthMessage("Speech connection test failed. Please try again.");
+    } finally {
+      setIsTestingSpeech(false);
     }
   };
 
@@ -539,7 +645,11 @@ export function SettingsView() {
                   role="switch"
                   aria-checked={aiProvider === "azure-foundry"}
                   aria-label="Toggle AI provider"
-                  onClick={() => setAiProvider((prev) => (prev === "openrouter" ? "azure-foundry" : "openrouter"))}
+                  onClick={() => {
+                    setAiProvider((prev) => (prev === "openrouter" ? "azure-foundry" : "openrouter"));
+                    setProviderHealthStatus("idle");
+                    setProviderHealthMessage("");
+                  }}
                   className="inline-flex items-center gap-2 bg-transparent px-0 py-0 text-xs text-[#d1d1d1]"
                 >
                   <span className={`${aiProvider === "openrouter" ? "text-[#e3e3e3]" : "text-[#9b9b9b]"}`}>OpenRouter</span>
@@ -594,12 +704,27 @@ export function SettingsView() {
                       placeholder="https://your-resource.openai.azure.com"
                       className="w-full rounded border border-[#2f2f2f] bg-[#191919] px-3 py-2 text-sm text-[#d1d1d1] focus:outline-none focus:ring-1 focus:ring-[#7eb8f7]"
                     />
-                    <p className="text-xs text-[#8b8b8b]">
-                      Use the resource base URL (for example <span className="text-[#b3b3b3]">https://your-resource.openai.azure.com</span> or <span className="text-[#b3b3b3]">https://your-resource.services.ai.azure.com</span>).
-                    </p>
                   </div>
                 </div>
               )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleTestProviderConnection();
+                  }}
+                  disabled={isTestingProvider}
+                  className="px-3 py-1.5 text-sm bg-[#2a2a2a] hover:bg-[#343434] disabled:opacity-60 disabled:hover:bg-[#2a2a2a] text-[#e3e3e3] rounded-md transition-colors"
+                >
+                  {isTestingProvider ? "Testing..." : "Test connection"}
+                </button>
+                {providerHealthStatus !== "idle" && (
+                  <span className={`text-xs ${providerHealthStatus === "ok" ? "text-[#8fd18f]" : "text-[#e69a9a]"}`}>
+                    {providerHealthMessage}
+                  </span>
+                )}
+              </div>
 
               <div className="space-y-1">
                 <label htmlFor="azure-speech-key" className="text-sm text-[#d1d1d1]">
@@ -644,6 +769,24 @@ export function SettingsView() {
                     className="w-full rounded border border-[#2f2f2f] bg-[#191919] px-3 py-2 text-sm text-[#d1d1d1] focus:outline-none focus:ring-1 focus:ring-[#7eb8f7]"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleTestSpeechConnection();
+                  }}
+                  disabled={isTestingSpeech}
+                  className="px-3 py-1.5 text-sm bg-[#2a2a2a] hover:bg-[#343434] disabled:opacity-60 disabled:hover:bg-[#2a2a2a] text-[#e3e3e3] rounded-md transition-colors"
+                >
+                  {isTestingSpeech ? "Testing..." : "Test connection"}
+                </button>
+                {speechHealthStatus !== "idle" && (
+                  <span className={`text-xs ${speechHealthStatus === "ok" ? "text-[#8fd18f]" : "text-[#e69a9a]"}`}>
+                    {speechHealthMessage}
+                  </span>
+                )}
               </div>
             </div>
           </section>

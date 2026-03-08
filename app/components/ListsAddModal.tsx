@@ -5,12 +5,26 @@ import { useState, useRef, useEffect } from "react";
 interface ListsAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (key: string, value: string, tags?: string) => Promise<void>;
+  onSubmit: (key: string, value: string, tags?: string) => Promise<void>;
+  mode?: "add" | "edit";
+  initialKey?: string;
+  initialValue?: string;
+  initialTags?: string;
   initialTag?: string;
   availableTags?: string[];
 }
 
-export function ListsAddModal({ isOpen, onClose, onAdd, initialTag, availableTags = [] }: ListsAddModalProps) {
+export function ListsAddModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  mode = "add",
+  initialKey,
+  initialValue,
+  initialTags,
+  initialTag,
+  availableTags = [],
+}: ListsAddModalProps) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [tags, setTags] = useState("");
@@ -20,12 +34,12 @@ export function ListsAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
 
   useEffect(() => {
     if (isOpen) {
-      if (initialTag) {
-        setTags(initialTag);
-      }
+      setKey(initialKey || "");
+      setValue(initialValue || "");
+      setTags(initialTags || initialTag || "");
       keyInputRef.current?.focus();
     }
-  }, [isOpen, initialTag]);
+  }, [isOpen, initialTag, initialKey, initialValue, initialTags]);
 
   const isYouTubeUrl = (url: string): boolean => {
     const patterns = [
@@ -108,7 +122,7 @@ export function ListsAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
 
     setIsSubmitting(true);
     try {
-      await onAdd(key.trim(), value.trim(), tags.trim());
+      await onSubmit(key.trim(), value.trim(), tags.trim());
       handleClose();
     } finally {
       setIsSubmitting(false);
@@ -138,7 +152,7 @@ export function ListsAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <h2 className="text-sm font-medium text-[#ebebeb]">Add to Lists</h2>
+          <h2 className="text-sm font-medium text-[#ebebeb]">{mode === "edit" ? "Edit list item" : "Add to list"}</h2>
           <button
             onClick={handleClose}
             className="p-1.5 text-[#7b7b7b] hover:text-[#ebebeb] hover:bg-[#2b2b2b] rounded-md transition-colors"
@@ -230,7 +244,7 @@ export function ListsAddModal({ isOpen, onClose, onAdd, initialTag, availableTag
             disabled={!key.trim() || isSubmitting}
             className="px-3 py-1.5 text-sm bg-[#4f4f4f] hover:bg-[#5f5f5f] disabled:bg-[#3f3f3f] disabled:text-[#6b6b6b] text-[#ebebeb] rounded-lg transition-colors"
           >
-            {isSubmitting ? "Adding..." : "Add"}
+            {isSubmitting ? (mode === "edit" ? "Saving..." : "Adding...") : (mode === "edit" ? "Save" : "Add")}
           </button>
         </div>
       </div>

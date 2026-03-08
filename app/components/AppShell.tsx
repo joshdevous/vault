@@ -644,9 +644,29 @@ export function AppShell() {
   })();
 
   // Open lists add modal
+  const [listsModalMode, setListsModalMode] = useState<"add" | "edit">("add");
+  const [listsModalEditingItemId, setListsModalEditingItemId] = useState<string | null>(null);
+  const [listsModalInitialKey, setListsModalInitialKey] = useState<string | undefined>(undefined);
+  const [listsModalInitialValue, setListsModalInitialValue] = useState<string | undefined>(undefined);
+  const [listsModalInitialTags, setListsModalInitialTags] = useState<string | undefined>(undefined);
   const [listsModalInitialTag, setListsModalInitialTag] = useState<string | undefined>(undefined);
   const handleOpenListsAddModal = (tag?: string) => {
+    setListsModalMode("add");
+    setListsModalEditingItemId(null);
+    setListsModalInitialKey(undefined);
+    setListsModalInitialValue(undefined);
+    setListsModalInitialTags(undefined);
     setListsModalInitialTag(tag);
+    setIsListsModalOpen(true);
+  };
+
+  const handleOpenListsEditModal = (item: ListItem) => {
+    setListsModalMode("edit");
+    setListsModalEditingItemId(item.id);
+    setListsModalInitialKey(item.key);
+    setListsModalInitialValue(item.value || "");
+    setListsModalInitialTags(item.tags || "");
+    setListsModalInitialTag(undefined);
     setIsListsModalOpen(true);
   };
 
@@ -916,6 +936,28 @@ export function AppShell() {
       }
     } catch (error) {
       console.error("Failed to delete list item:", error);
+    }
+  };
+
+  // Update list item
+  const handleUpdateListItem = async (id: string, key: string, value: string, tags: string) => {
+    try {
+      const res = await fetch(`/api/lists/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key,
+          value,
+          tags,
+        }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setListItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      }
+    } catch (error) {
+      console.error("Failed to update list item:", error);
     }
   };
 
@@ -1196,6 +1238,7 @@ export function AppShell() {
             listItems={listItems}
             onDeleteListItem={handleDeleteListItem}
             onOpenAddModal={handleOpenListsAddModal}
+            onOpenEditModal={handleOpenListsEditModal}
           />
         ) : currentView === "memories" ? (
           <MemoriesView
@@ -1362,10 +1405,27 @@ export function AppShell() {
       {/* Lists Add Modal */}
       <ListsAddModal
         isOpen={isListsModalOpen}
-        onClose={() => { setIsListsModalOpen(false); setListsModalInitialTag(undefined); }}
-        onAdd={async (key, value, tags) => {
+        onClose={() => {
+          setIsListsModalOpen(false);
+          setListsModalInitialTag(undefined);
+          setListsModalEditingItemId(null);
+          setListsModalInitialKey(undefined);
+          setListsModalInitialValue(undefined);
+          setListsModalInitialTags(undefined);
+          setListsModalMode("add");
+        }}
+        onSubmit={async (key, value, tags) => {
+          if (listsModalMode === "edit" && listsModalEditingItemId) {
+            await handleUpdateListItem(listsModalEditingItemId, key, value, tags || "");
+            return;
+          }
+
           await handleCreateListItem(key, value, tags);
         }}
+        mode={listsModalMode}
+        initialKey={listsModalInitialKey}
+        initialValue={listsModalInitialValue}
+        initialTags={listsModalInitialTags}
         initialTag={listsModalInitialTag}
         availableTags={availableListTags}
       />

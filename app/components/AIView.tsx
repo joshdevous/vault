@@ -250,7 +250,7 @@ export function AIView({ onBack: _onBack }: AIViewProps) {
         return;
       }
 
-      const rawModels = Array.isArray(data.models) ? data.models : [];
+      const rawModels: ModelInfo[] = Array.isArray(data.models) ? data.models : [];
       const models = rawModels.filter((model, index, all) => {
         return all.findIndex((candidate) => candidate.id === model.id) === index;
       });

@@ -7,9 +7,10 @@ interface ListsViewProps {
   listItems: ListItem[];
   onDeleteListItem: (id: string) => void;
   onOpenAddModal: (tag?: string) => void;
+  onOpenEditModal: (item: ListItem) => void;
 }
 
-export function ListsView({ listItems, onDeleteListItem, onOpenAddModal }: ListsViewProps) {
+export function ListsView({ listItems, onDeleteListItem, onOpenAddModal, onOpenEditModal }: ListsViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -157,14 +158,19 @@ export function ListsView({ listItems, onDeleteListItem, onOpenAddModal }: Lists
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredItems.map((item) => (
+              {filteredItems.map((item) => {
+                const hasValue = Boolean(item.value?.trim());
+                const hasTags = Boolean(item.tags?.trim());
+                const isKeyOnly = !hasValue && !hasTags;
+
+                return (
                 <div
                   key={item.id}
                   className="group bg-[#252525] border border-[#2f2f2f] hover:border-[#3f3f3f] rounded-lg p-4 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className={`flex justify-between gap-4 ${isKeyOnly ? "items-center" : "items-start"}`}>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className={`flex items-center gap-2 ${isKeyOnly ? "" : "mb-1"}`}>
                         <span className="font-medium text-[#ebebeb] truncate">{item.key}</span>
                       </div>
                       {item.value && (
@@ -211,10 +217,19 @@ export function ListsView({ listItems, onDeleteListItem, onOpenAddModal }: Lists
                           </svg>
                         ) : (
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                           </svg>
                         )}
+                      </button>
+                      <button
+                        onClick={() => onOpenEditModal(item)}
+                        className="p-2 text-[#6b6b6b] hover:text-[#ebebeb] hover:bg-[#3f3f3f] rounded transition-colors"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L12 15l-4 1 1-4 8.586-8.586z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => onDeleteListItem(item.id)}
@@ -228,7 +243,7 @@ export function ListsView({ listItems, onDeleteListItem, onOpenAddModal }: Lists
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
 
