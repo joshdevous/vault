@@ -11,6 +11,10 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 import Spreadsheet from "react-spreadsheet";
 import type {
   Matrix,
@@ -934,11 +938,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       currentEditor
         .chain()
         .focus()
-        .insertContent([
-          { type: "paragraph", content: [{ type: "text", text: "| Column 1 | Column 2 |" }] },
-          { type: "paragraph", content: [{ type: "text", text: "| --- | --- |" }] },
-          { type: "paragraph", content: [{ type: "text", text: "| Value | Value |" }] },
-        ])
+        .insertTable({ rows: 3, cols: 2, withHeaderRow: true })
         .run();
       return;
     }
@@ -1626,6 +1626,12 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           class: "text-blue-400 underline cursor-pointer",
         },
       }),
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       NoteImage.configure({
         inline: false,
         HTMLAttributes: {
