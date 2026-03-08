@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { EditorView } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
@@ -705,6 +705,56 @@ type SaveOptions = {
   skipParentUpdate?: boolean;
 };
 
+type SlashCommand = {
+  id: "table" | "icon";
+  label: string;
+  description: string;
+  keywords: string[];
+  run: () => void | Promise<void>;
+};
+
+type SlashMenuState = {
+  query: string;
+  from: number;
+  to: number;
+  left: number;
+  top: number;
+};
+
+function getSlashMenuState(editor: Editor): SlashMenuState | null {
+  const { state, view } = editor;
+  const { selection } = state;
+
+  if (!selection.empty) {
+    return null;
+  }
+
+  const { $from } = selection;
+  if (!$from.parent.isTextblock) {
+    return null;
+  }
+
+  const textBefore = $from.parent.textBetween(0, $from.parentOffset, "\n", "\0");
+  const match = textBefore.match(/(?:^|\s)\/([a-z0-9-]*)$/i);
+  if (!match) {
+    return null;
+  }
+
+  const fullMatch = match[0];
+  const query = match[1] ?? "";
+  const startsWithSpace = fullMatch.startsWith(" ");
+  const slashIndexInText = textBefore.length - fullMatch.length + (startsWithSpace ? 1 : 0);
+  const from = $from.start() + slashIndexInText;
+  const to = $from.pos;
+
+  const coords = view.coordsAtPos(to);
+  const menuWidth = 320;
+  const left = Math.max(12, Math.min(coords.left, window.innerWidth - menuWidth - 12));
+  const top = coords.bottom + 6;
+
+  return { query, from, to, left, top };
+}
+
 interface NoteEditorProps {
   note: Note;
   allNotes: Note[];
@@ -785,6 +835,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChatRef = useRef(true);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const [slashMenuState, setSlashMenuState] = useState<SlashMenuState | null>(null);
+  const [slashMenuSelectedIndex, setSlashMenuSelectedIndex] = useState(0);
 
   const isNearBottom = (element: HTMLDivElement) =>
     element.scrollHeight - element.scrollTop - element.clientHeight < 96;
@@ -812,10 +864,131 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
     [chatMessages]
   );
 
+  const slashCommands = useMemo<SlashCommand[]>(() => {
+    return [
+      {
+        id: "table",
+        label: "Table",
+        description: "Insert a simple 2-column table template",
+        keywords: ["table", "grid", "columns"],
+        run: () => {
+          if (!editor) {
+            return;
+          }
+
+          editor
+            .chain()
+            .focus()
+            .insertContent([
+              { type: "paragraph", content: [{ type: "text", text: "| Column 1 | Column 2 |" }] },
+              { type: "paragraph", content: [{ type: "text", text: "| --- | --- |" }] },
+              { type: "paragraph", content: [{ type: "text", text: "| Value | Value |" }] },
+            ])
+            .run();
+        },
+      },
+      {
+        id: "icon",
+        label: "Icon",
+        description: "Set this note icon with an emoji",
+        keywords: ["icon", "emoji"],
+        run: async () => {
+          const currentEmoji = note.icon.startsWith("icon:") || note.icon === "sheet" ? "" : note.icon;
+          const next = window.prompt("Set note emoji icon", currentEmoji || "");
+          if (!next) {
+            return;
+          }
+
+          const trimmed = next.trim();
+          if (!trimmed) {
+            return;
+          }
+
+          const res = await fetch(`/api/notes/${note.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ icon: trimmed }),
+          });
+
+          if (!res.ok) {
+            return;
+          }
+
+          const updated = await res.json();
+          onUpdate(updated);
+        },
+      },
+    ];
+  }, [editor, note.icon, note.id, onUpdate]);
+
+  const filteredSlashCommands = useMemo(() => {
+    if (!slashMenuState) {
+      return [] as SlashCommand[];
+    }
+
+    const query = slashMenuState.query.trim().toLowerCase();
+    if (!query) {
+      return slashCommands;
+    }
+
+    return slashCommands.filter((command) => {
+      if (command.id.includes(query) || command.label.toLowerCase().includes(query)) {
+        return true;
+      }
+      return command.keywords.some((keyword) => keyword.includes(query));
+    });
+  }, [slashCommands, slashMenuState]);
+
+  const runSlashCommand = useCallback(async (command: SlashCommand) => {
+    if (!editor || !slashMenuState) {
+      return;
+    }
+
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: slashMenuState.from, to: slashMenuState.to })
+      .run();
+
+    setSlashMenuState(null);
+    setSlashMenuSelectedIndex(0);
+
+    await command.run();
+  }, [editor, slashMenuState]);
+
+  const syncSlashMenu = useCallback((currentEditor: Editor | null) => {
+    if (!currentEditor || isSpreadsheetNote || isLocked || showCallNoteView) {
+      setSlashMenuState(null);
+      setSlashMenuSelectedIndex(0);
+      return;
+    }
+
+    const nextState = getSlashMenuState(currentEditor);
+    setSlashMenuState(nextState);
+    if (!nextState) {
+      setSlashMenuSelectedIndex(0);
+    }
+  }, [isLocked, isSpreadsheetNote, showCallNoteView]);
+
   const spreadsheetMatrix = useMemo<Matrix<SpreadsheetCell>>(
     () => spreadsheetData.map((row) => row.map((value) => ({ value }))),
     [spreadsheetData]
   );
+
+  useEffect(() => {
+    if (!slashMenuState) {
+      return;
+    }
+
+    if (filteredSlashCommands.length === 0) {
+      setSlashMenuSelectedIndex(0);
+      return;
+    }
+
+    if (slashMenuSelectedIndex >= filteredSlashCommands.length) {
+      setSlashMenuSelectedIndex(filteredSlashCommands.length - 1);
+    }
+  }, [filteredSlashCommands.length, slashMenuSelectedIndex, slashMenuState]);
 
   const queueSpreadsheetSave = useCallback((normalized: string[][]) => {
     if (isLocked) {
@@ -1458,6 +1631,42 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
           return false;
         }
 
+        if (slashMenuState) {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (filteredSlashCommands.length > 0) {
+              setSlashMenuSelectedIndex((prev) => (prev + 1) % filteredSlashCommands.length);
+            }
+            return true;
+          }
+
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            if (filteredSlashCommands.length > 0) {
+              setSlashMenuSelectedIndex((prev) =>
+                prev <= 0 ? filteredSlashCommands.length - 1 : prev - 1
+              );
+            }
+            return true;
+          }
+
+          if (event.key === "Enter") {
+            const selectedCommand = filteredSlashCommands[slashMenuSelectedIndex];
+            if (selectedCommand) {
+              event.preventDefault();
+              void runSlashCommand(selectedCommand);
+              return true;
+            }
+          }
+
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setSlashMenuState(null);
+            setSlashMenuSelectedIndex(0);
+            return true;
+          }
+        }
+
         if (
           (event.ctrlKey || event.metaKey) &&
           !event.shiftKey &&
@@ -1680,6 +1889,8 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         return;
       }
 
+      syncSlashMenu(editor);
+
       const html = editor.getHTML();
       lastLocalEditorHtmlRef.current = html;
       
@@ -1693,7 +1904,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         void saveNoteRef.current(titleRef.current, html);
       }, 500);
     },
-  }, [insertImageWithParagraph, isLocked, isSpreadsheetNote, note.content, note.id]);
+  }, [filteredSlashCommands, insertImageWithParagraph, isLocked, isSpreadsheetNote, note.content, note.id, runSlashCommand, slashMenuSelectedIndex, slashMenuState, syncSlashMenu]);
 
   useEffect(() => {
     if (!editor) {
@@ -1702,6 +1913,11 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
 
     editor.setEditable(!isSpreadsheetNote && !isLocked);
   }, [editor, isLocked, isSpreadsheetNote]);
+
+  useEffect(() => {
+    setSlashMenuState(null);
+    setSlashMenuSelectedIndex(0);
+  }, [note.id, isSpreadsheetNote, isLocked, showCallNoteView]);
 
   // Update editor content when note changes, including external updates to same note
   useEffect(() => {
@@ -2248,7 +2464,37 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                 </div>
               </div>
             ) : (
-              <EditorContent editor={editor} className="flex-1" />
+              <div className="relative flex-1">
+                <EditorContent editor={editor} className="flex-1" />
+                {slashMenuState && filteredSlashCommands.length > 0 && (
+                  <div
+                    className="fixed z-[80] w-80 rounded-lg border border-[#3f3f3f] bg-[#252525] p-1 shadow-xl"
+                    style={{ left: slashMenuState.left, top: slashMenuState.top }}
+                  >
+                    {filteredSlashCommands.map((command, index) => {
+                      const selected = index === slashMenuSelectedIndex;
+                      return (
+                        <button
+                          key={command.id}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            void runSlashCommand(command);
+                          }}
+                          className={`w-full rounded px-2 py-1.5 text-left transition-colors ${selected ? "bg-[#3f3f3f]" : "hover:bg-[#2f2f2f]"}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-sm ${selected ? "text-[#ebebeb]" : "text-[#d0d0d0]"}`}>
+                              /{command.id}
+                            </span>
+                            <span className="text-xs text-[#6b6b6b]">{command.label}</span>
+                          </div>
+                          <div className="text-xs text-[#8a8a8a] truncate">{command.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
