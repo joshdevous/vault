@@ -857,10 +857,6 @@ export function AppShell() {
 
   useEffect(() => {
     const handleSearchShortcut = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target)) {
-        return;
-      }
-
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
         setIsSearchModalOpen(true);
