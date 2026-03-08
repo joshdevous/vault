@@ -709,49 +709,59 @@ a {
   text-align: center !important;
 }
 
+.ProseMirror.prose table,
 .ProseMirror table {
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
-  width: 100%;
-  margin: 0.75rem 0;
-  border: 1px solid #3f3f3f;
-  border-radius: 10px;
+  width: 100% !important;
+  margin: 0.5rem 0 !important;
+  border: 1px solid #3f3f3f !important;
+  border-radius: 14px !important;
   overflow: hidden;
 }
 
+.ProseMirror.prose th,
+.ProseMirror.prose td,
 .ProseMirror th,
 .ProseMirror td {
-  border-right: 1px solid #3f3f3f;
-  border-bottom: 1px solid #3f3f3f;
-  padding: 0.1rem 0.55rem;
-  line-height: 1.25;
+  border-right: 1px solid #3f3f3f !important;
+  border-bottom: 1px solid #3f3f3f !important;
+  padding: 0.02rem 0.55rem !important;
+  line-height: 1.1 !important;
   vertical-align: top;
   min-width: 1rem;
 }
 
+.ProseMirror.prose tr > *:last-child,
 .ProseMirror tr > *:last-child {
   border-right: 0;
 }
 
+.ProseMirror.prose table tr:last-child > *,
 .ProseMirror table tr:last-child > * {
   border-bottom: 0;
 }
 
+.ProseMirror.prose th,
 .ProseMirror th {
-  background: #252525;
+  background: #252525 !important;
   font-weight: 600;
 }
 
+:root[data-theme="light"] .ProseMirror.prose th,
+:root[data-theme="light"] .ProseMirror.prose td,
 :root[data-theme="light"] .ProseMirror th,
 :root[data-theme="light"] .ProseMirror td {
   border-color: #cfcfc8;
 }
 
+:root[data-theme="light"] .ProseMirror.prose table,
 :root[data-theme="light"] .ProseMirror table {
   border-color: #cfcfc8;
 }
 
+:root[data-theme="light"] .ProseMirror.prose th,
 :root[data-theme="light"] .ProseMirror th {
   background: #ecece7;
 }
