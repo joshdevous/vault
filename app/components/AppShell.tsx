@@ -608,9 +608,21 @@ export function AppShell() {
   }, [handleCreateNote, quickAiEnabled, quickAiShortcut, quickNoteEnabled, quickNoteShortcut]);
 
   // Select note
-  const handleSelectNote = (id: string) => {
+  const handleSelectNote = async (id: string) => {
     setSelectedNoteId(id);
     setCurrentView("note");
+
+    try {
+      const res = await fetch(`/api/notes/${id}`);
+      if (!res.ok) {
+        return;
+      }
+
+      const refreshed = await res.json();
+      setNotes((prev) => prev.map((note) => (note.id === id ? refreshed : note)));
+    } catch (error) {
+      console.error("Failed to refresh selected note:", error);
+    }
   };
 
   // Open lists view

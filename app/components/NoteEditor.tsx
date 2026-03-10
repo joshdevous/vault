@@ -903,7 +903,6 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
   const lastSpreadsheetNoteIdRef = useRef(note.id);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<Editor | null>(null);
-  const saveNoteRef = useRef<(newTitle: string, newContent: string, options?: SaveOptions) => Promise<void>>(async () => {});
   const uploadNoteImageRef = useRef<(file: File) => Promise<string | null>>(async () => null);
   const lastLocalEditorHtmlRef = useRef(note.content || "");
   const lastSpreadsheetSerializedRef = useRef(
@@ -1408,9 +1407,28 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       }
 
       lastSpreadsheetSerializedRef.current = nextSerialized;
-      void saveNoteRef.current(titleRef.current, nextSerialized, {
-        skipParentUpdate: true,
-      });
+      void (async () => {
+        try {
+          const res = await fetch(`/api/notes/${note.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: titleRef.current, content: nextSerialized }),
+          });
+
+          if (!res.ok) {
+            const payload = await res.text().catch(() => "");
+            console.error("Failed to save note:", {
+              noteId: note.id,
+              status: res.status,
+              statusText: res.statusText,
+              payload,
+            });
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to save note:", error);
+        }
+      })();
     }, 1200);
   }, [isLocked, note, onUpdate]);
 
@@ -1926,11 +1944,20 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
         body: JSON.stringify({ title: newTitle, content: newContent }),
       });
 
-      if (res.ok) {
-        const updatedNote = await res.json();
-        if (!skipParentUpdate) {
-          onUpdate(updatedNote);
-        }
+      if (!res.ok) {
+        const payload = await res.text().catch(() => "");
+        console.error("Failed to save note:", {
+          noteId: note.id,
+          status: res.status,
+          statusText: res.statusText,
+          payload,
+        });
+        return;
+      }
+
+      const updatedNote = await res.json();
+      if (!skipParentUpdate) {
+        onUpdate(updatedNote);
       }
     } catch (error) {
       console.error("Failed to save note:", error);
@@ -1955,10 +1982,6 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
       console.error("Failed to toggle note lock:", error);
     }
   }, [isLocked, note.id, onUpdate]);
-
-  useEffect(() => {
-    saveNoteRef.current = saveNote;
-  }, [saveNote]);
 
   // TipTap editor
   const editor = useEditor({
@@ -2107,7 +2130,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
             clearTimeout(saveTimeoutRef.current);
           }
 
-          void saveNoteRef.current(titleRef.current, editor?.getHTML() || note.content, {
+          void saveNote(titleRef.current, editor?.getHTML() || note.content, {
             skipParentUpdate: true,
           });
           return true;
@@ -2298,12 +2321,12 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
 
       // Set new timeout for auto-save (500ms debounce)
       saveTimeoutRef.current = setTimeout(() => {
-        void saveNoteRef.current(titleRef.current, html, {
+        void saveNote(titleRef.current, html, {
           skipParentUpdate: true,
         });
       }, 500);
     },
-  }, [insertImageWithParagraph, isLocked, isSpreadsheetNote, note.content, note.id, runSlashCommand, syncSlashMenu]);
+  }, [insertImageWithParagraph, isLocked, isSpreadsheetNote, note.content, note.id, runSlashCommand, saveNote, syncSlashMenu]);
 
   useEffect(() => {
     if (!editor) {
@@ -2765,7 +2788,7 @@ export function NoteEditor({ note, allNotes, onUpdate, onSelectNote, chatOpenSta
                       ? serializeSpreadsheetContent(spreadsheetData)
                       : (editor?.getHTML() || note.content);
 
-                    void saveNoteRef.current(titleRef.current, content, {
+                    void saveNote(titleRef.current, content, {
                       skipParentUpdate: true,
                     });
                     return;
